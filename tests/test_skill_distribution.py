@@ -15,13 +15,13 @@ class SkillDistributionTests(unittest.TestCase):
             subprocess.run([sys.executable, str(ROOT / "scripts/package-workflow-skills.py"),
                             "--output", directory], check=True, capture_output=True, text=True)
             archives = sorted(Path(directory).glob("*.zip"))
-            self.assertEqual(len(archives), 4)
+            self.assertEqual(len(archives), 6)
             for archive in archives:
                 with zipfile.ZipFile(archive) as bundle:
                     names = bundle.namelist()
                     self.assertEqual(len(names), 1)
                     content = bundle.read(names[0]).decode()
-                    self.assertIn("name: sulaide-", content)
+                    self.assertIn("name: sulaide", content)
                     self.assertIn("sulaide", content)
 
 

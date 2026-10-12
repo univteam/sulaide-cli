@@ -8,7 +8,7 @@ from pathlib import Path
 
 from . import __version__
 
-SKILL_NAMES = ("sulaide-source", "sulaide-analysis", "sulaide-preview", "sulaide-export")
+SKILL_NAMES = ("sulaide", "sulaide-login", "sulaide-source", "sulaide-analysis", "sulaide-preview", "sulaide-export")
 MARKER = ".sulaide-skill"
 
 # agent -> (detection dir, skills dir), both relative to the home directory.

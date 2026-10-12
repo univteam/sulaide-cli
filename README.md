@@ -39,7 +39,12 @@ sulaide auth logout     # 删除本地保存的 Key
 
 ## 四步法 skill
 
-`skills/` 下是四个独立的工作流阶段，它们调用同一个 `sulaide` CLI，并在 Agent 之间传递项目、operation、源修订、演示版本和 manifest hash：
+另有两个辅助 skill：
+
+- `sulaide`：总览与路由，说明何时用哪个阶段 skill、前置条件和常见错误（401、503 `AGENT_API_DISABLED`、限流、积分不足等）
+- `sulaide-login`：引导安装 CLI、注册/登录、安全保存 API Key、用 `sulaide auth status` 验证
+
+`skills/` 下的四个阶段 skill 调用同一个 `sulaide` CLI，并在 Agent 之间传递项目、operation、源修订、演示版本和 manifest hash：
 
 1. `sulaide-source`：准备或更新项目素材（文本）
 2. `sulaide-analysis`：运行或恢复叙事分析，返回大纲和执行状态

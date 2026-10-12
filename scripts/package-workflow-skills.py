@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Package the four public Sulaide workflow skills independently."""
+"""Package the public Sulaide skills independently."""
 from pathlib import Path
 import argparse
 import zipfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILLS = ("sulaide-source", "sulaide-analysis", "sulaide-preview", "sulaide-export")
+SKILLS = ("sulaide", "sulaide-login", "sulaide-source", "sulaide-analysis", "sulaide-preview", "sulaide-export")
 
 
 def main() -> None:
