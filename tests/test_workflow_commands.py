@@ -54,6 +54,18 @@ class WorkflowCommandTests(unittest.TestCase):
                 downloaded["kwargs"] = kwargs
                 return FakeResponse()
 
+        class FakeAnon:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def get(self, url, **kwargs):
+                downloaded["anonymous"] = True
+                downloaded["url"] = url
+                return FakeResponse()
+
         class FakeClient:
             http = FakeHttp()
 
@@ -63,15 +75,17 @@ class WorkflowCommandTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             output = Path(directory) / "deck.pptx"
             args = build_parser().parse_args(["resources", "download", "5", "--output", str(output)])
-            with patch("sulaide_cli.cli.Client", return_value=FakeClient()):
+            with patch("sulaide_cli.cli.Client", return_value=FakeClient()), \
+                 patch("sulaide_cli.cli.httpx.Client", return_value=FakeAnon()):
                 result = run(args)
+                with self.assertRaises(FileExistsError):
+                    run(args)
             self.assertEqual(result["path"], str(output.resolve()))
             self.assertEqual(result["size_bytes"], len(b"resource-bytes"))
             self.assertEqual(result["resource_version_id"], 5)
             self.assertEqual(output.read_bytes(), b"resource-bytes")
             self.assertEqual(downloaded["url"], "https://files.example.com/signed")
-            with self.assertRaises(FileExistsError):
-                run(args)
+            self.assertTrue(downloaded["anonymous"])
 
     def test_resources_download_rejects_empty_payload(self):
         class FakeResponse:
@@ -87,7 +101,7 @@ class WorkflowCommandTests(unittest.TestCase):
             http = FakeHttp()
 
             def request(self, method, path, **kwargs):
-                return {"redirect_url": "https://files.example.com/empty", "filename": "draft.pdf"}
+                return {"redirect_url": "/files/empty", "filename": "draft.pdf"}
 
         with TemporaryDirectory() as directory:
             output = Path(directory) / "draft.pdf"

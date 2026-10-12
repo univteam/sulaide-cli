@@ -428,7 +428,12 @@ def run(args) -> dict:
             raise ValueError("Resource download link was not returned")
         if url.startswith("/"):
             url = _base_url() + url
-        response = client.http.get(url, follow_redirects=True)
+        if httpx.URL(url).host == httpx.URL(_base_url()).host:
+            response = client.http.get(url, follow_redirects=True)
+        else:
+            # Signed storage URLs live on another host: never send the API key there.
+            with httpx.Client(timeout=httpx.Timeout(30, read=90), follow_redirects=True) as anonymous:
+                response = anonymous.get(url)
         if response.is_error or "application/json" in response.headers.get("content-type", ""):
             raise ApiError(response.status_code, response.text)
         content = response.content
