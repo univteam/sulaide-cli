@@ -1,6 +1,53 @@
-# sulaide-cli
+<p align="center">
+  <a href="https://www.sulide.com.cn">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/logo-wordmark-color-on-dark.png">
+      <img src="assets/logo-wordmark-color.png" alt="速来得" width="360">
+    </picture>
+  </a>
+</p>
 
-速来PPT（Sulaide）Agent API 的命令行客户端，以及配套的「四步法」工作流 skill。
+<p align="center">
+  <a href="https://github.com/univteam/sulaide-cli/actions/workflows/ci.yml"><img src="https://github.com/univteam/sulaide-cli/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/univteam/sulaide-cli" alt="License: Apache-2.0"></a>
+</p>
+
+<p align="center">
+  <a href="https://www.sulide.com.cn">官网</a> ·
+  <a href="https://www.sulide.com.cn/register">注册</a> ·
+  <a href="https://www.sulide.com.cn/login">登录</a> ·
+  <a href="#english">English</a>
+</p>
+
+# 速来得 · AI PPT 助手
+
+**把已有材料，变成一份专业、可编辑的汇报。**
+
+速来得面向需要把研究底稿、汇报材料、企业文档快速转成专业演示文稿的人：企业汇报、咨询分析、市场研究、投融资材料、教学培训等场景中，有底稿和业务判断、但缺少时间或设计资源完成版式与 PPTX 封装的内容生产者。
+
+上传底稿，梳理叙事，生成页面，导出可编辑 PPTX —— 交付的是 PPTX，不是一次性图片。
+
+### 工作流
+
+1. **底稿上传**：导入 Word、PDF、PPTX、表格或直接粘贴文本。
+2. **叙事分析**：先确认故事线、页面职责和主要结论。
+3. **报告预览**：逐页检查版式、文字和内容图，随时重新生成。
+4. **PPTX 导出**：带着母版、Logo、页脚和可编辑文字一起交付。
+
+### 特点
+
+- **尽量保留原本的语言**：复用底稿中的观点、措辞和表达习惯，不把专业判断改成千篇一律的 AI 文案。
+- **母版和内容分层处理**：标题、品牌标识、页脚和页码由母版管理，AI 专注在内容区完成视觉表达。
+- **交付后仍然可继续编辑**：导出可编辑 PPTX，汇报前改项目名、换标题或调整单页，不需要重做整份文档。
+- **设计品牌母版**：针对格式要求较高的汇报，可先设置 Logo、字体、页脚和版式规范。
+
+👉 立即体验：[www.sulide.com.cn](https://www.sulide.com.cn)
+
+---
+
+## sulaide-cli：让编码 Agent 使用速来得
+
+本仓库是速来得 Agent API 的命令行客户端 `sulaide`，以及配套的 `sulaide` skill。装好后，Claude Code、Codex、Cursor、Gemini CLI、GitHub Copilot 等编码 Agent 可以直接帮你把材料做成 PPT：登录 → 上传底稿 → 叙事分析 → 预览 → 导出 PPTX。
 
 ## 安装
 
@@ -53,8 +100,6 @@ sulaide auth logout     # 删除本地保存的 Key
 
 ### 一步安装到编码 Agent
 
-> **仓库目前是私有的。** 所有插件/扩展安装都会通过 git 拉取本仓库，需要本机对 `univteam/sulaide-cli` 有访问权限：先 `gh auth login`，再 `gh auth setup-git`（或配置好 SSH key）。
-
 | Agent | 安装（一次） | 更新 |
 | --- | --- | --- |
 | Claude Code | `/plugin marketplace add univteam/sulaide-cli` 然后 `/plugin install sulaide@sulaide` | `/plugin marketplace update sulaide` |
@@ -104,7 +149,7 @@ uv run pytest
 
 ## Agent API 说明
 
-- CLI 调用速来PPT 的 Agent API v1（`/api/agent/v1/*`），使用个人 Agent API Key 认证，费用从账户积分扣除，Key 不会单独产生余额，也不继承管理员权限。
+- CLI 调用速来得 的 Agent API v1（`/api/agent/v1/*`），使用个人 Agent API Key 认证，费用从账户积分扣除，Key 不会单独产生余额，也不继承管理员权限。
 - Key 可在网页「账户 → API Keys」创建或吊销；新建的密钥只显示一次。`sulaide auth register` / `sulaide auth login` 会自动创建并保存 Key。
 - 服务端可能关闭 Agent API，此时命令会返回错误；用 `sulaide auth status` 查看当前启用的能力。
 - 按账户限流：默认每分钟 120 次读、10 次写。
@@ -114,3 +159,16 @@ uv run pytest
 ## 许可证
 
 [Apache License 2.0](LICENSE)
+
+---
+
+<a id="english"></a>
+
+## English
+
+**Sulaide (速来得) is an AI PPT assistant that turns your existing material into a professional, editable presentation.** Upload a draft (Word, PDF, PPTX, spreadsheets, or pasted text), confirm the narrative and page roles, review and regenerate pages, then export an editable PPTX with your master slides, logo, footer, and editable text — not a one-off image.
+
+This repository provides the `sulaide` CLI for the Sulaide Agent API and a `sulaide` agent skill, so coding agents such as Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot can run the workflow for you. Install with `uv tool install git+https://github.com/univteam/sulaide-cli.git`; see the install table above for one-step plugin setup.
+
+Website: [www.sulide.com.cn](https://www.sulide.com.cn) · [Sign up](https://www.sulide.com.cn/register) · [Log in](https://www.sulide.com.cn/login) · License: [Apache-2.0](LICENSE)
+

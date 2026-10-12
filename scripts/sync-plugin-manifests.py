@@ -29,7 +29,7 @@ KEYWORDS = ["sulaide", "ppt", "presentation", "workflow"]
 def manifests() -> dict[str, dict]:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     version = project["version"]
-    desc = "速来PPT skill：一个 sulaide skill 覆盖登录与素材 → 分析 → 预览 → 导出四步法（需要 sulaide CLI）"
+    desc = "速来得 skill：一个 sulaide skill 覆盖登录与素材 → 分析 → 预览 → 导出四步法（需要 sulaide CLI）"
     common = {"name": NAME, "version": version, "description": desc, "author": AUTHOR,
               "homepage": REPO, "repository": REPO, "license": "Apache-2.0", "keywords": KEYWORDS}
     return {
@@ -49,7 +49,7 @@ def manifests() -> dict[str, dict]:
                          "category": "Productivity"}],
         },
         ".codex-plugin/plugin.json": {**common, "skills": "./skills/", "interface": {
-            "displayName": "Sulaide", "shortDescription": "速来PPT 四步法工作流",
+            "displayName": "Sulaide", "shortDescription": "速来得 四步法工作流",
             "developerName": "univteam", "category": "Productivity", "websiteURL": REPO}},
         # Cursor.
         ".cursor-plugin/plugin.json": {**common, "author": {"name": AUTHOR["name"]},
