@@ -1,0 +1,13 @@
+{
+  "name": "sulaide",
+  "owner": {
+    "name": "univteam"
+  },
+  "plugins": [
+    {
+      "name": "sulaide",
+      "source": "./",
+      "description": "速来PPT 四步法工作流 skill：素材 → 分析 → 预览 → 导出（需要 sulaide CLI）"
+    }
+  ]
+}

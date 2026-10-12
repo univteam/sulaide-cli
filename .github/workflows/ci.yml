@@ -1,0 +1,46 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --locked
+      - name: Download Cursor plugin schemas
+        run: |
+          mkdir -p "$RUNNER_TEMP/cursor-schemas"
+          for f in plugin marketplace; do
+            curl -fsSL "https://raw.githubusercontent.com/cursor/plugins/main/schemas/$f.schema.json" -o "$RUNNER_TEMP/cursor-schemas/$f.schema.json"
+          done
+          echo "CURSOR_SCHEMA_DIR=$RUNNER_TEMP/cursor-schemas" >> "$GITHUB_ENV"
+      - run: uv run pytest -v
+      - run: uv run scripts/package-workflow-skills.py --output dist/workflow-skills
+      - name: Console entry point via uv tool install
+        run: |
+          uv tool install .
+          sulaide --help
+      - name: Plugin manifests are in sync
+        run: uv run scripts/sync-plugin-manifests.py --check
+      - name: Bundled skills install via CLI
+        run: |
+          export SULAIDE_SKILLS_HOME="$(mktemp -d)"
+          sulaide skills install --all
+          test -f "$SULAIDE_SKILLS_HOME/.config/opencode/skills/sulaide-source/SKILL.md"
+  validate-claude-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g @anthropic-ai/claude-code
+      - run: claude plugin validate .

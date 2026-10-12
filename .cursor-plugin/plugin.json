@@ -1,0 +1,19 @@
+{
+  "name": "sulaide",
+  "version": "0.2.0",
+  "description": "速来PPT 四步法工作流 skill：素材 → 分析 → 预览 → 导出（需要 sulaide CLI）",
+  "author": {
+    "name": "univteam"
+  },
+  "homepage": "https://github.com/univteam/sulaide-cli",
+  "repository": "https://github.com/univteam/sulaide-cli",
+  "license": "Apache-2.0",
+  "keywords": [
+    "sulaide",
+    "ppt",
+    "presentation",
+    "workflow"
+  ],
+  "displayName": "Sulaide",
+  "skills": "./skills/"
+}
