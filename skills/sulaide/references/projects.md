@@ -13,7 +13,7 @@ sulaide projects list            # compact JSON on stdout
 sulaide --pretty projects list   # indented, easier to read with the user
 ```
 
-Report exactly what the server returns: each project's `project_id`, title, status, and any other fields present. Do not infer, renumber, or promise fields the response does not contain. If the list is empty, say so plainly and move on to creating a project (step 4).
+The response is `{"items": [...]}` (at most 100 projects). Report exactly what the server returns: each item's `project_id`, title, status, and any other fields present. Do not infer, renumber, or promise fields the response does not contain. If the list is empty, say so plainly and move on to creating a project (step 4).
 
 Common failures are listed in the error table in `SKILL.md`: 401 means re-login, 503 `AGENT_API_DISABLED` means the server has the Agent API turned off, and 429 means the per-account read limit was hit — wait and retry, do not poll in a loop.
 
@@ -27,7 +27,7 @@ Use this to confirm a project before reusing it: check it exists, and read `sour
 
 ## 4. Reuse or create
 
-- **Reuse** when the user asks to continue, fix, re-export, or list something that already exists: take the `project_id` from the list and hand it to the matching stage guide (`references/source.md`, `references/analysis.md`, `references/preview.md`, `references/export.md`, or `references/resources.md`).
+- **Reuse** when the user asks to continue, fix, re-export, or list something that already exists: take the `project_id` from the list and hand it to the matching stage guide (`references/source.md`, `references/analysis.md`, `references/preview.md`, or `references/export.md`).
 - **Create** only when the user wants new work and no existing project fits: `sulaide projects create --title "..."`. Keep the returned `project_id` and `request_id` in the handoff.
 - Creating duplicates a project the user already asked about is a real mistake; when in doubt, list first and confirm with the user.
 
