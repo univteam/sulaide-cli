@@ -76,6 +76,17 @@ sulaide coupons --status available --human   # 查询卡券（只读，可按状
 
 登录后 Key 保存在 `~/.sulaide/auth.json`（目录 `0700`，文件 `0600`），工作流命令会自动使用。密码只会交互输入，不接受命令行参数。
 
+### 资源库（查看与下载项目资源）
+
+```bash
+sulaide projects list                                   # 查看已有项目
+sulaide resources list PROJECT_ID                       # 查看项目资源库中的资源版本
+sulaide resources list PROJECT_ID --resource-type export_pptx   # 按类型筛选（upload / narrative_analysis / generated_image / export_pptx / export_pdf）
+sulaide resources download RESOURCE_VERSION_ID --output FILE   # 下载资源库中的一个资源版本
+```
+
+`resources download` 不会覆盖已存在的文件（先写 `.part` 再原子改名），输出为 JSON（`path`、`size_bytes`、`filename` 等）。
+
 ### 环境变量
 
 | 变量 | 说明 |
@@ -93,6 +104,7 @@ sulaide coupons --status available --human   # 查询卡券（只读，可按状
 | 步骤 | 文件 | 内容 |
 | --- | --- | --- |
 | 登录 | `references/login.md` | 安装检查、注册/登录、安全保存 API Key、`sulaide auth status` 验证 |
+| 资源库 | `references/resources.md` | `sulaide resources list` 查看项目资源库，`resources download` 下载资源文件 |
 | 1. 素材 | `references/source.md` | 准备或更新项目素材（文本） |
 | 2. 分析 | `references/analysis.md` | 运行或恢复叙事分析，返回大纲和执行状态 |
 | 3. 预览 | `references/preview.md` | 生成并检查演示预览，含逐页成功/失败状态 |
@@ -158,6 +170,7 @@ uv run pytest
 - `sulaide credits` 调用只读的 `GET /api/agent/v1/credits`，返回 Key 所属账户的 `available` 与 `balance`；若服务端尚未提供该接口会返回 404。
 - `sulaide coupons` 调用只读的 `GET /api/agent/v1/coupons`，列出账户的卡券（名称、金额、状态、有效期），可用 `--status available|not_started|used|expired|voided` 筛选；不返回兑换码，也不能通过 CLI 兑换或使用卡券。
 - 目前素材只支持 UTF-8 文本；PDF、Office、表格、图片等需通过网页上传。
+- 资源库命令（`sulaide resources list` / `resources download`）读取并下载项目的资源版本：源底稿、叙事分析稿、生成图片、导出 PPTX/PDF。
 - 每个 operation 的 request ID 是其恢复标识：响应丢失后请查询原 operation，不要新建请求。
 
 ## 许可证

@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REFERENCES = ("login", "source", "analysis", "preview", "export")
+REFERENCES = ("login", "resources", "source", "analysis", "preview", "export")
 
 
 class SkillDistributionTests(unittest.TestCase):
