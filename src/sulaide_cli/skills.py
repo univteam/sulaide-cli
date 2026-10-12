@@ -8,7 +8,9 @@ from pathlib import Path
 
 from . import __version__
 
-SKILL_NAMES = ("sulaide-source", "sulaide-analysis", "sulaide-preview", "sulaide-export")
+SKILL_NAMES = ("sulaide",)
+# Separately installed skills from earlier versions; removed only if they carry our marker.
+LEGACY_SKILL_NAMES = ("sulaide-login", "sulaide-source", "sulaide-analysis", "sulaide-preview", "sulaide-export")
 MARKER = ".sulaide-skill"
 
 # agent -> (detection dir, skills dir), both relative to the home directory.
@@ -62,11 +64,22 @@ def _installed_version(path: Path) -> str | None:
     return marker.read_text(encoding="utf-8").strip() if marker.is_file() else None
 
 
+def _remove_legacy(agent: str) -> list[dict]:
+    removed = []
+    for name in LEGACY_SKILL_NAMES:
+        dest = _target(agent) / name
+        if not dest.is_symlink() and dest.is_dir() and _installed_version(dest) is not None:
+            shutil.rmtree(dest)
+            removed.append({"agent": agent, "skill": name, "status": "removed_legacy"})
+    return removed
+
+
 def install(agents: list[str], *, force: bool = False) -> dict:
     source = bundled_skills_root()
     results = []
     for agent in agents:
         base = _target(agent)
+        results.extend(_remove_legacy(agent))
         for name in SKILL_NAMES:
             dest = base / name
             if dest.exists() or dest.is_symlink():
@@ -85,7 +98,8 @@ def install(agents: list[str], *, force: bool = False) -> dict:
 
 
 def installed_agents() -> list[str]:
-    return [a for a in AGENTS if any(_installed_version(_target(a) / n) for n in SKILL_NAMES)]
+    names = SKILL_NAMES + LEGACY_SKILL_NAMES
+    return [a for a in AGENTS if any(_installed_version(_target(a) / n) for n in names)]
 
 
 def update() -> dict:
@@ -98,6 +112,7 @@ def update() -> dict:
 def uninstall(agents: list[str]) -> dict:
     results = []
     for agent in agents:
+        results.extend(_remove_legacy(agent))
         for name in SKILL_NAMES:
             dest = _target(agent) / name
             if _installed_version(dest) is not None:

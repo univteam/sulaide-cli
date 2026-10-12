@@ -1,8 +1,3 @@
----
-name: sulaide-export
-description: Validate and download a Sulaide PPTX export from a specific frozen presentation version.
----
-
 # Sulaide PPTX export
 
 Use the shared `sulaide` CLI and the exact frozen `presentation_version_id` and `manifest_hash` from preview.

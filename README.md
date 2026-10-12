@@ -37,14 +37,19 @@ sulaide auth logout     # 删除本地保存的 Key
 
 不要把 Key 写进 prompt、shell 历史、skill 文件或交接文档。
 
-## 四步法 skill
+## `sulaide` skill
 
-`skills/` 下是四个独立的工作流阶段，它们调用同一个 `sulaide` CLI，并在 Agent 之间传递项目、operation、源修订、演示版本和 manifest hash：
+只有一个 skill：`skills/sulaide/`。用户只需启用 `sulaide`，它会按需读取 `references/` 下的分步指南：
 
-1. `sulaide-source`：准备或更新项目素材（文本）
-2. `sulaide-analysis`：运行或恢复叙事分析，返回大纲和执行状态
-3. `sulaide-preview`：生成并检查演示预览，含逐页成功/失败状态
-4. `sulaide-export`：基于冻结的演示版本校验并下载 PPTX
+| 步骤 | 文件 | 内容 |
+| --- | --- | --- |
+| 登录 | `references/login.md` | 安装检查、注册/登录、安全保存 API Key、`sulaide auth status` 验证 |
+| 1. 素材 | `references/source.md` | 准备或更新项目素材（文本） |
+| 2. 分析 | `references/analysis.md` | 运行或恢复叙事分析，返回大纲和执行状态 |
+| 3. 预览 | `references/preview.md` | 生成并检查演示预览，含逐页成功/失败状态 |
+| 4. 导出 | `references/export.md` | 基于冻结的演示版本校验并下载 PPTX |
+
+`SKILL.md` 还包含前置条件、路由规则和常见错误（401、503 `AGENT_API_DISABLED`、限流、冲突、积分不足等）。`references/*.md` 没有 frontmatter，Agent 不会把它们列为独立 skill。
 
 ### 一步安装到编码 Agent
 
@@ -72,12 +77,12 @@ uv tool upgrade sulaide-cli && sulaide skills update   # 升级 CLI 并刷新已
 sulaide skills uninstall --agent opencode
 ```
 
-支持的 `--agent`：`claude`、`codex`、`cursor`、`gemini`、`copilot`、`opencode`、`windsurf`、`amp`、`pi`、`hermes`、`agents`（通用 `~/.agents/skills`）。不会覆盖不是由 sulaide 安装的同名目录，除非加 `--force`。
+支持的 `--agent`：`claude`、`codex`、`cursor`、`gemini`、`copilot`、`opencode`、`windsurf`、`amp`、`pi`、`hermes`、`agents`（通用 `~/.agents/skills`）。不会覆盖不是由 sulaide 安装的同名目录，除非加 `--force`。旧版本单独安装的 `sulaide-source` 等目录，只要带有 sulaide 安装标记，会在 install/update/uninstall 时自动清理；没有标记的同名目录不会被动。
 
 ### 单独打包
 
 ```bash
-uv run scripts/package-workflow-skills.py   # 输出到 dist/workflow-skills/
+uv run scripts/package-workflow-skills.py   # 输出 dist/workflow-skills/sulaide-<版本>.zip
 ```
 
 ### 维护说明

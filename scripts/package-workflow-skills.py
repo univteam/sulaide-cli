@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Package the four public Sulaide workflow skills independently."""
+"""Package the single public Sulaide skill (SKILL.md plus references/) as a zip."""
 from pathlib import Path
 import argparse
 import zipfile
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib  # type: ignore
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILLS = ("sulaide-source", "sulaide-analysis", "sulaide-preview", "sulaide-export")
+SKILL = "sulaide"
 
 
 def main() -> None:
@@ -14,15 +18,16 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=ROOT / "dist" / "workflow-skills")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    for name in SKILLS:
-        source = ROOT / "skills" / name
-        skill_file = source / "SKILL.md"
-        if not skill_file.is_file():
-            raise SystemExit(f"missing skill definition: {skill_file}")
-        archive = args.output / f"{name}-0.1.0.zip"
-        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
-            bundle.write(skill_file, f"{name}/SKILL.md")
-    print(f"Packaged {len(SKILLS)} skills in {args.output}")
+    source = ROOT / "skills" / SKILL
+    if not (source / "SKILL.md").is_file():
+        raise SystemExit(f"missing skill definition: {source / 'SKILL.md'}")
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    archive = args.output / f"{SKILL}-{version}.zip"
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        for path in sorted(source.rglob("*")):
+            if path.is_file() and "__pycache__" not in path.parts:
+                bundle.write(path, f"{SKILL}/{path.relative_to(source).as_posix()}")
+    print(f"Packaged {archive}")
 
 
 if __name__ == "__main__":

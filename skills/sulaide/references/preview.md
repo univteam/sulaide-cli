@@ -1,8 +1,3 @@
----
-name: sulaide-preview
-description: Generate and inspect a Sulaide presentation preview, including page-level success and failure state.
----
-
 # Sulaide preview and images
 
 Use the shared `sulaide` CLI and the exact project/version from the handoff.

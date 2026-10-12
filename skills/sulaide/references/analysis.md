@@ -1,8 +1,3 @@
----
-name: sulaide-analysis
-description: Run or recover narrative analysis for a Sulaide project and return its outline and execution status.
----
-
 # Sulaide narrative analysis
 
 Use only the shared `sulaide` CLI. Confirm the project and source revision first. Ask the user for page count or narrative requirements only when they are material and cannot be inferred from the request.

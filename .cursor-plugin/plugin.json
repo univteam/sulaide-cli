@@ -1,7 +1,7 @@
 {
   "name": "sulaide",
   "version": "0.2.0",
-  "description": "速来PPT 四步法工作流 skill：素材 → 分析 → 预览 → 导出（需要 sulaide CLI）",
+  "description": "速来PPT skill：一个 sulaide skill 覆盖登录与素材 → 分析 → 预览 → 导出四步法（需要 sulaide CLI）",
   "author": {
     "name": "univteam"
   },
