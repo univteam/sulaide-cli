@@ -11,7 +11,7 @@ Sulaide turns source material into a presentation in four stages. Every stage us
 
 1. CLI installed: `sulaide --help` works. If not, install with `uv tool install git+https://github.com/univteam/sulaide-cli.git` (upgrade: `uv tool upgrade sulaide-cli`).
 2. Authenticated: `sulaide auth status` succeeds. If it fails with 401 or "Run `sulaide auth login`", read `references/login.md` and follow it first.
-3. The user's Sulaide account has credits; model and image calls are charged to it.
+3. The user's Sulaide account has credits; model and image calls are charged to it. Check with `sulaide credits` (JSON: `available`, `balance`) before long runs such as preview generation.
 
 ## Routing
 
@@ -47,7 +47,7 @@ The CLI prints errors as JSON on stderr with `http_status`, `reason`, `retryable
 | HTTP 429 `AGENT_RATE_LIMITED` | Per-account rate limit (default 120 reads / 10 writes per minute) | Wait, then retry the same request ID |
 | HTTP 503 `AGENT_RATE_LIMIT_UNAVAILABLE` | Temporary server issue | Retry later with the same request ID |
 | exit 3 / HTTP 409 (`SOURCE_REVISION_CONFLICT`, `PRESENTATION_VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`) | State changed or request ID reused with different input | Re-read the project/version, then decide with the user |
-| Insufficient credits / unpaid pages | Account balance too low | Ask the user to top up in the Sulaide web app; do not retry in a loop |
+| Insufficient credits ("积分余额不足") / unpaid pages | Account balance too low | Run `sulaide credits` and report `available`; ask the user to top up in the Sulaide web app; do not retry in a loop |
 | exit 5 `wait_timeout` | Operation still running | `sulaide wait OPERATION_ID` again |
 | exit 6 `network_error` | Response lost | Reuse the request ID or query the operation |
 | "SULAIDE_BASE_URL must use HTTPS" | Bad override | Unset `SULAIDE_BASE_URL` to use the default `https://www.sulide.com.cn` |
