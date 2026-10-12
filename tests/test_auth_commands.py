@@ -30,6 +30,8 @@ class AuthCommandTests(unittest.TestCase):
                 return {"token": "jwt-only-for-key-creation", "username": "alice", "role": "USER"}
             if path == "/api/account/me":
                 return {"id": 42}
+            if path == "/api/account/invite-code":
+                return {"invite_code": "INV-1"}
             if method == "POST":
                 return {"id": 7, "secret": "sul_private.once"}
             raise AssertionError(path)
@@ -61,6 +63,8 @@ class AuthCommandTests(unittest.TestCase):
                 return {"token": "jwt", "username": "alice", "role": "USER"}
             if path == "/api/account/me":
                 return {"id": 42}
+            if path == "/api/account/invite-code":
+                return {"invite_code": "INV-1"}
             if path == "/api/account/api-keys":
                 return {"id": 7, "secret": "sul_private.once"}
             raise AssertionError(path)
@@ -80,10 +84,55 @@ class AuthCommandTests(unittest.TestCase):
         parser = cli.build_parser()
         login = parser.parse_args(["auth", "login", "--username", "alice"])
         register = parser.parse_args(["auth", "register", "--username", "alice", "--email", "alice@example.com"])
+        invite_code = parser.parse_args(["auth", "invite-code"])
         self.assertEqual(login.action, "login")
         self.assertEqual(register.action, "register")
+        self.assertEqual(invite_code.action, "invite-code")
         with self.assertRaises(SystemExit):
             parser.parse_args(["auth", "login", "--username", "alice", "--password", "unsafe"])
+
+    def test_login_caches_invite_code_for_later_viewing(self):
+        def request(method, path, *, token=None, json_body=None):
+            if path == "/api/auth/login":
+                return {"token": "jwt-only-for-key-creation", "username": "alice", "role": "USER"}
+            if path == "/api/account/me":
+                return {"id": 42}
+            if path == "/api/account/invite-code":
+                return {"invite_code": "INV-42"}
+            if method == "POST":
+                return {"id": 7, "secret": "sul_private.once"}
+            raise AssertionError(path)
+
+        with patch.object(cli, "_auth_request", side_effect=request), \
+             patch.object(cli.getpass, "getpass", return_value="hidden-password"):
+            cli._auth_command(Namespace(action="login", username="alice"))
+            result = cli._auth_command(Namespace(action="invite-code"))
+
+        stored = json.loads((Path(self.temp_dir.name) / "auth.json").read_text())
+        self.assertEqual(stored["invite_code"], "INV-42")
+        self.assertEqual(result["invite_code"], "INV-42")
+        self.assertIn("INV-42", result["register_url"])
+
+    def test_invite_code_endpoint_failure_does_not_break_login(self):
+        def request(method, path, *, token=None, json_body=None):
+            if path == "/api/auth/login":
+                return {"token": "jwt-only-for-key-creation", "username": "alice", "role": "USER"}
+            if path == "/api/account/me":
+                return {"id": 42}
+            if path == "/api/account/invite-code":
+                raise cli.ApiError(404, {"reason": "NOT_FOUND"})
+            if method == "POST":
+                return {"id": 7, "secret": "sul_private.once"}
+            raise AssertionError(path)
+
+        with patch.object(cli, "_auth_request", side_effect=request), \
+             patch.object(cli.getpass, "getpass", return_value="hidden-password"):
+            cli._auth_command(Namespace(action="login", username="alice"))
+
+        stored = json.loads((Path(self.temp_dir.name) / "auth.json").read_text())
+        self.assertNotIn("invite_code", stored)
+        with self.assertRaises(ValueError, msg="本地未保存邀请码"):
+            cli._auth_command(Namespace(action="invite-code"))
 
     def test_logout_removes_local_credential(self):
         cli._write_auth({"api_key": "sul_private.secret"})

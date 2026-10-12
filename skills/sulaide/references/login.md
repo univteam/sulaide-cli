@@ -17,7 +17,11 @@ These commands prompt for secrets without echoing them. Ask the user to run them
   2. shows the privacy policy and terms versions and the register page URL; the user must read them and type `yes` to agree;
   3. if email verification is enabled, opens a captcha image (path printed on stderr), asks for the arithmetic answer, then sends a 6-digit code to the email and asks for it.
 
-Both commands create a per-user Agent API key and save it to `~/.sulaide/auth.json` (directory `0700`, file `0600`). Re-running `login` replaces the saved key and revokes the previous one it created. The output reports `api_key_saved` and the key ID, not the secret.
+Both commands create a per-user Agent API key, fetch the account's invite code (best-effort; skipped silently if the deployment does not expose it), and save both to `~/.sulaide/auth.json` (directory `0700`, file `0600`). Re-running `login` replaces the saved key and revokes the previous one it created. The output reports `api_key_saved` and the key ID, not the secret.
+
+## Invite code
+
+`~/.sulaide/auth.json` caches the account's invite code. `sulaide auth invite-code` prints the code and a ready-to-share register URL (`https://www.sulide.com.cn/register?invite_code=...`). If nothing is cached (older login, or the deployment has no invite-code endpoint), the command fails and asks the user to re-run `sulaide auth login`.
 
 ## 3. Managed agents and CI
 
