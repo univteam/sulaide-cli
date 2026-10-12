@@ -163,7 +163,7 @@ def _captcha_answer(email: str) -> str:
     return input("请输入邮件中的 6 位验证码: ").strip()
 
 
-INVITE_CODE_ENDPOINT = "/api/account/invite-code"
+INVITE_CODE_ENDPOINT = "/api/credits/invite-code"
 
 
 def _fetch_invite_code(token: str) -> str | None:

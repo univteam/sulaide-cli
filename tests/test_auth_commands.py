@@ -30,7 +30,7 @@ class AuthCommandTests(unittest.TestCase):
                 return {"token": "jwt-only-for-key-creation", "username": "alice", "role": "USER"}
             if path == "/api/account/me":
                 return {"id": 42}
-            if path == "/api/account/invite-code":
+            if path == "/api/credits/invite-code":
                 return {"invite_code": "INV-1"}
             if method == "POST":
                 return {"id": 7, "secret": "sul_private.once"}
@@ -63,7 +63,7 @@ class AuthCommandTests(unittest.TestCase):
                 return {"token": "jwt", "username": "alice", "role": "USER"}
             if path == "/api/account/me":
                 return {"id": 42}
-            if path == "/api/account/invite-code":
+            if path == "/api/credits/invite-code":
                 return {"invite_code": "INV-1"}
             if path == "/api/account/api-keys":
                 return {"id": 7, "secret": "sul_private.once"}
@@ -97,7 +97,7 @@ class AuthCommandTests(unittest.TestCase):
                 return {"token": "jwt-only-for-key-creation", "username": "alice", "role": "USER"}
             if path == "/api/account/me":
                 return {"id": 42}
-            if path == "/api/account/invite-code":
+            if path == "/api/credits/invite-code":
                 return {"invite_code": "INV-42"}
             if method == "POST":
                 return {"id": 7, "secret": "sul_private.once"}
@@ -119,7 +119,7 @@ class AuthCommandTests(unittest.TestCase):
                 return {"token": "jwt-only-for-key-creation", "username": "alice", "role": "USER"}
             if path == "/api/account/me":
                 return {"id": 42}
-            if path == "/api/account/invite-code":
+            if path == "/api/credits/invite-code":
                 raise cli.ApiError(404, {"reason": "NOT_FOUND"})
             if method == "POST":
                 return {"id": 7, "secret": "sul_private.once"}
