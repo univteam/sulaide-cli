@@ -265,6 +265,26 @@ def _emit(value, *, json_mode: bool = True) -> None:
         print(json.dumps(value, ensure_ascii=False, indent=2))
 
 
+def _credits_summary(result: dict) -> str:
+    return f"可用积分：{result.get('available')}（账户余额：{result.get('balance')}）"
+
+
+COUPON_STATUS_LABELS = {"available": "可用", "not_started": "未生效", "used": "已使用",
+                        "expired": "已过期", "voided": "已作废"}
+
+
+def _coupons_summary(result: dict) -> str:
+    items = result.get("items") or []
+    if not items:
+        return "没有符合条件的卡券"
+    lines = [f"共 {result.get('total', len(items))} 张卡券："]
+    for item in items:
+        until = (item.get("valid_until") or "")[:10]
+        label = COUPON_STATUS_LABELS.get(item.get("status"), item.get("status"))
+        lines.append(f"- {item.get('name')}：¥{item.get('amount')}，{label}，有效期至 {until}")
+    return "\n".join(lines)
+
+
 def _wait(client: Client, operation_id: str, timeout: float) -> dict:
     deadline = time.monotonic() + timeout
     delay = 1.0
@@ -322,6 +342,13 @@ def build_parser() -> argparse.ArgumentParser:
         if action == "install": sp.add_argument("--force", action="store_true", help="覆盖非 sulaide 安装的同名目录")
     skills.add_parser("update", help="更新已安装过的 Agent")
     skills.add_parser("list", help="查看检测到的 Agent 与安装状态")
+    credits = sub.add_parser("credits", help="查询当前账户剩余积分")
+    credits.add_argument("--human", action="store_true", help="输出一行中文摘要而不是 JSON")
+    coupons = sub.add_parser("coupons", help="查询当前账户的卡券（只读）")
+    coupons.add_argument("--status", choices=("available", "not_started", "used", "expired", "voided"))
+    coupons.add_argument("--page", type=int, default=1)
+    coupons.add_argument("--size", type=int, default=20)
+    coupons.add_argument("--human", action="store_true", help="输出中文列表而不是 JSON")
     wait = sub.add_parser("wait"); wait.add_argument("operation_id"); wait.add_argument("--timeout", type=float, default=180)
     return parser
 
@@ -396,6 +423,11 @@ def run(args) -> dict:
             raise ValueError("Downloaded artifact is not a PPTX ZIP package")
         temp.replace(destination)
         return {"path": str(destination), "size_bytes": len(response.content), "source_hash": response.headers.get("x-sulaide-source-hash")}
+    if args.area == "credits": return client.request("GET", "/credits")
+    if args.area == "coupons":
+        params = {"page": args.page, "size": args.size}
+        if args.status: params["status"] = args.status
+        return client.request("GET", "/coupons", params=params)
     if args.area == "operations": return client.request("GET", f"/operations/{args.operation_id}")
     if args.area == "wait": return _wait(client, args.operation_id, args.timeout)
     raise ValueError("Unsupported command")
@@ -405,7 +437,13 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
     try:
-        _emit(run(args), json_mode=not args.pretty)
+        result = run(args)
+        if args.area == "credits" and args.human:
+            print(_credits_summary(result))
+        elif args.area == "coupons" and args.human:
+            print(_coupons_summary(result))
+        else:
+            _emit(result, json_mode=not args.pretty)
     except ApiError as exc:
         detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
         reason = detail.get("reason") if isinstance(detail, dict) else None
