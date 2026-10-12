@@ -1,9 +1,9 @@
 ---
 name: sulaide
-description: Make, continue, or export a PPT with Sulaide (速来PPT) through the sulaide CLI — install and log in, add source material, build the outline, generate pages, download PPTX, and diagnose Sulaide CLI errors. This single skill routes to detailed step guides in references/.
+description: Make, continue, or export a PPT with Sulaide (速来得) through the sulaide CLI — install and log in, add source material, build the outline, generate pages, download PPTX, and diagnose Sulaide CLI errors. This single skill routes to detailed step guides in references/.
 ---
 
-# Sulaide AI PPT workflow（速来PPT 工作流总览）
+# Sulaide AI PPT workflow（速来得 工作流总览）
 
 Sulaide turns source material into a presentation in four stages. Every stage uses the shared `sulaide` CLI; do not call HTTP routes directly or invent commands.
 

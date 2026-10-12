@@ -1,7 +1,7 @@
 {
   "name": "sulaide",
   "version": "0.2.0",
-  "description": "速来PPT skill：一个 sulaide skill 覆盖登录与素材 → 分析 → 预览 → 导出四步法（需要 sulaide CLI）",
+  "description": "速来得 skill：一个 sulaide skill 覆盖登录与素材 → 分析 → 预览 → 导出四步法（需要 sulaide CLI）",
   "author": {
     "name": "univteam",
     "url": "https://github.com/univteam"
@@ -18,7 +18,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Sulaide",
-    "shortDescription": "速来PPT 四步法工作流",
+    "shortDescription": "速来得 四步法工作流",
     "developerName": "univteam",
     "category": "Productivity",
     "websiteURL": "https://github.com/univteam/sulaide-cli"
