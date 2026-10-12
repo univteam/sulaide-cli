@@ -1,8 +1,3 @@
----
-name: sulaide-source
-description: Prepare or update source material in a Sulaide PPT project. Use when a user wants to start a presentation from text or a readable text document.
----
-
 # Sulaide source preparation
 
 Use the shared `sulaide` CLI. Do not call undocumented HTTP routes or write the API key into a command, file, prompt, or handoff.

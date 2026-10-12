@@ -1,8 +1,3 @@
----
-name: sulaide-login
-description: Install the Sulaide CLI and sign a user in (register or log in) so agents can use the Sulaide Agent API. Use when `sulaide` is missing, `sulaide auth status` fails, a 401 occurs, or the user wants to create an account, rotate, or remove their API key.
----
-
 # Sulaide login and API key（登录与 API Key）
 
 The user types passwords and verification answers themselves. Never ask them to paste a password, captcha answer, email code, or API key into chat, and never put one on a command line, in a file you write, or in a handoff.
@@ -32,7 +27,7 @@ When a runtime cannot run interactive prompts, the user creates a key in the Sul
 
 ## 4. Verify
 
-Run `sulaide auth status`. Success returns the capability contract and `authenticated_as` (username, `local API key`, or `environment API key`). Then hand off to the `sulaide-source` skill or the user's requested stage.
+Run `sulaide auth status`. Success returns the capability contract and `authenticated_as` (username, `local API key`, or `environment API key`). Then continue with `references/source.md` or the user's requested stage (see the routing table in `SKILL.md`).
 
 ## Sign out / rotate
 

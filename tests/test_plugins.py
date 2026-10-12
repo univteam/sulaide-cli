@@ -38,8 +38,7 @@ class PluginManifestTests(unittest.TestCase):
         self.assertEqual(claude["plugins"][0]["source"], "./")
         codex = load(".agents/plugins/marketplace.json")
         self.assertEqual(codex["plugins"][0]["source"]["path"], "./")
-        for name in ("sulaide-source", "sulaide-analysis", "sulaide-preview", "sulaide-export"):
-            self.assertTrue((ROOT / "skills" / name / "SKILL.md").is_file())
+        self.assertTrue((ROOT / "skills/sulaide/SKILL.md").is_file())
 
     def test_no_duplicate_skill_copies_in_repo(self):
         copies = [p for p in ROOT.rglob("SKILL.md")

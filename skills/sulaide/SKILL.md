@@ -1,6 +1,6 @@
 ---
 name: sulaide
-description: Overview and router for the Sulaide (速来PPT) AI presentation workflow. Use when a user wants to make, continue, or export a PPT with Sulaide and you need to decide which stage skill to run (login, source, analysis, preview, export) or diagnose a Sulaide CLI error.
+description: Make, continue, or export a PPT with Sulaide (速来PPT) through the sulaide CLI — install and log in, add source material, build the outline, generate pages, download PPTX, and diagnose Sulaide CLI errors. This single skill routes to detailed step guides in references/.
 ---
 
 # Sulaide AI PPT workflow（速来PPT 工作流总览）
@@ -10,18 +10,22 @@ Sulaide turns source material into a presentation in four stages. Every stage us
 ## Prerequisites
 
 1. CLI installed: `sulaide --help` works. If not, install with `uv tool install git+https://github.com/univteam/sulaide-cli.git` (upgrade: `uv tool upgrade sulaide-cli`).
-2. Authenticated: `sulaide auth status` succeeds. If it fails with 401 or "Run `sulaide auth login`", use the `sulaide-login` skill first.
+2. Authenticated: `sulaide auth status` succeeds. If it fails with 401 or "Run `sulaide auth login`", read `references/login.md` and follow it first.
 3. The user's Sulaide account has credits; model and image calls are charged to it.
 
 ## Routing
 
-| User intent | Skill | Key output to hand off |
+This is the only Sulaide skill. Each step's detailed instructions live in `references/` next to this file. Before acting on a step, read the matching file with your file-reading tool and follow it exactly.
+
+| User intent | Read and follow | Key output to hand off |
 | --- | --- | --- |
-| Install, register, log in, API key problems | `sulaide-login` | authenticated account (never the key itself) |
-| Start a deck / add or update material | `sulaide-source` | `project_id`, `source_revision` |
-| Build or recover the outline | `sulaide-analysis` | `operation_id`, outline, page count |
-| Generate pages, inspect page status | `sulaide-preview` | `presentation_version_id`, `manifest_hash` |
-| Download a PPTX | `sulaide-export` | file path, version, manifest hash |
+| Install, register, log in, API key problems | `references/login.md` | authenticated account (never the key itself) |
+| Start a deck / add or update material | `references/source.md` | `project_id`, `source_revision` |
+| Build or recover the outline | `references/analysis.md` | `operation_id`, outline, page count |
+| Generate pages, inspect page status | `references/preview.md` | `presentation_version_id`, `manifest_hash` |
+| Download a PPTX | `references/export.md` | file path, version, manifest hash |
+
+For an end-to-end request ("make me a PPT from this"), read and run login (only if `sulaide auth status` fails) → source → analysis → preview → export, reading each reference file when you reach that step.
 
 Run stages in order: source → analysis → preview → export. Resume from the stage the handoff reached; do not restart earlier stages unless the user asks.
 
@@ -38,7 +42,7 @@ The CLI prints errors as JSON on stderr with `http_status`, `reason`, `retryable
 
 | Symptom | Meaning | What to do |
 | --- | --- | --- |
-| exit 4 / HTTP 401 | Missing, revoked, or invalid key | Use `sulaide-login`; `sulaide auth login` creates a new key |
+| exit 4 / HTTP 401 | Missing, revoked, or invalid key | Read `references/login.md`; `sulaide auth login` creates a new key |
 | HTTP 503 `AGENT_API_DISABLED` | Agent API is turned off on the server | Tell the user; retry later. Not fixable from the client |
 | HTTP 429 `AGENT_RATE_LIMITED` | Per-account rate limit (default 120 reads / 10 writes per minute) | Wait, then retry the same request ID |
 | HTTP 503 `AGENT_RATE_LIMIT_UNAVAILABLE` | Temporary server issue | Retry later with the same request ID |
