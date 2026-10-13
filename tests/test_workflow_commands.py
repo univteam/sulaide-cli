@@ -31,11 +31,11 @@ class WorkflowCommandTests(unittest.TestCase):
         class FakeClient:
             def request(self, method, path, **kwargs):
                 calls.append((method, path))
-                return {"items": []}
+                return {"items": [{"id": 7, "project_title": "Q3", "stage": "draft"}]}
 
         args = build_parser().parse_args(["projects", "list"])
         with patch("sulaide_cli.cli.Client", return_value=FakeClient()):
-            self.assertEqual(run(args), {"items": []})
+            self.assertEqual(run(args)["items"][0]["id"], 7)
         self.assertEqual(calls, [("GET", "/projects")])
 
     def test_projects_show_calls_get_project(self):
