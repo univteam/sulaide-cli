@@ -94,6 +94,7 @@ sulaide coupons --status available --human   # 查询卡券（只读，可按状
 | 步骤 | 文件 | 内容 |
 | --- | --- | --- |
 | 登录 | `references/login.md` | 安装检查、注册/登录、安全保存 API Key、`sulaide auth status` 验证 |
+| 项目 | `references/projects.md` | `sulaide projects list` 获取项目列表，`projects show` 查看详情，复用或新建项目 |
 | 1. 素材 | `references/source.md` | 准备或更新项目素材（文本） |
 | 2. 分析 | `references/analysis.md` | 运行或恢复叙事分析，返回大纲和执行状态 |
 | 3. 预览 | `references/preview.md` | 生成并检查演示预览，含逐页成功/失败状态 |

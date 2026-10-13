@@ -19,6 +19,38 @@ class WorkflowCommandTests(unittest.TestCase):
             with self.assertRaises(TimeoutError):
                 run(args)
 
+    def test_projects_list_and_show_parse(self):
+        listed = build_parser().parse_args(["projects", "list"])
+        self.assertEqual((listed.area, listed.action), ("projects", "list"))
+        shown = build_parser().parse_args(["projects", "show", "7"])
+        self.assertEqual(shown.project_id, 7)
+
+    def test_projects_list_calls_get_projects(self):
+        calls = []
+
+        class FakeClient:
+            def request(self, method, path, **kwargs):
+                calls.append((method, path))
+                return {"items": [{"id": 7, "project_title": "Q3", "stage": "draft"}]}
+
+        args = build_parser().parse_args(["projects", "list"])
+        with patch("sulaide_cli.cli.Client", return_value=FakeClient()):
+            self.assertEqual(run(args)["items"][0]["id"], 7)
+        self.assertEqual(calls, [("GET", "/projects")])
+
+    def test_projects_show_calls_get_project(self):
+        calls = []
+
+        class FakeClient:
+            def request(self, method, path, **kwargs):
+                calls.append((method, path))
+                return {"project_id": 7}
+
+        args = build_parser().parse_args(["projects", "show", "7"])
+        with patch("sulaide_cli.cli.Client", return_value=FakeClient()):
+            self.assertEqual(run(args), {"project_id": 7})
+        self.assertEqual(calls, [("GET", "/projects/7")])
+
 
 if __name__ == "__main__":
     unittest.main()
