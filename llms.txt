@@ -8,7 +8,7 @@ Setup for AI agents: follow README.md section "给 AI 助手的安装说明 / Fo
 - Skill: `sulaide skills install --agent <name>`
 - Login (user types credentials themselves): `sulaide auth login`, or user-set `SULAIDE_API_KEY`
 - Verify: `sulaide auth status`, `sulaide credits --human`
-- Upgrade: `sulaide update`
+- Upgrade: `sulaide update` (manual fallback: `uv tool install --force git+https://github.com/univteam/sulaide-cli.git`; `uv tool upgrade` keeps a pinned branch/commit)
 
 ## Docs
 

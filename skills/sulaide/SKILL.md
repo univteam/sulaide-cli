@@ -9,7 +9,7 @@ Sulaide turns source material into a presentation in four stages. Every stage us
 
 ## Prerequisites
 
-1. CLI installed: `sulaide --help` works. If not, install with `uv tool install git+https://github.com/univteam/sulaide-cli.git` (upgrade: `uv tool upgrade sulaide-cli`).
+1. CLI installed: `sulaide --help` works. If not, install with `uv tool install git+https://github.com/univteam/sulaide-cli.git` (upgrade: `sulaide update`; manual fallback `uv tool install --force git+https://github.com/univteam/sulaide-cli.git` — plain `uv tool upgrade` cannot move an install pinned to a branch/commit).
 2. Authenticated: `sulaide auth status` succeeds. If it fails with 401 or "Run `sulaide auth login`", read `references/login.md` and follow it first.
 3. The user's Sulaide account has credits; model and image calls are charged to it. Check with `sulaide credits` (JSON: `available`, `balance`) before long runs such as preview generation.
 

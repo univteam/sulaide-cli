@@ -140,8 +140,10 @@ sulaide credits --human    # 可用积分
 
 ```bash
 uv tool install git+https://github.com/univteam/sulaide-cli.git
-# 升级
-uv tool upgrade sulaide-cli
+# 升级（推荐；会同时刷新已安装的 skill）
+sulaide update
+# 手动升级：始终从 main 重装（对固定到分支/提交的安装也有效）
+uv tool install --force git+https://github.com/univteam/sulaide-cli.git
 # 不安装、临时运行一次
 uvx --from git+https://github.com/univteam/sulaide-cli.git sulaide auth status
 # 本地 checkout 中安装
@@ -227,7 +229,7 @@ sulaide skills list                     # 查看检测到的 Agent 和安装状�
 sulaide skills install                  # 安装到自动检测到的所有 Agent
 sulaide skills install --agent opencode # 只装某一个，可重复 --agent
 sulaide skills install --all            # 装到所有已知 Agent 目录
-uv tool upgrade sulaide-cli && sulaide skills update   # 升级 CLI 并刷新已安装的 skill
+sulaide update                          # 升级 CLI 并刷新已安装的 skill
 sulaide skills uninstall --agent opencode
 ```
 
@@ -264,7 +266,9 @@ uv run pytest
 - 按账户限流：默认每分钟 120 次读、10 次写。
 - `sulaide credits` 调用只读的 `GET /api/agent/v1/credits`，返回 Key 所属账户的 `available` 与 `balance`；若服务端尚未提供该接口会返回 404。
 - `sulaide coupons` 调用只读的 `GET /api/agent/v1/coupons`，列出账户的卡券（名称、金额、状态、有效期），可用 `--status available|not_started|used|expired|voided` 筛选；不返回兑换码，也不能通过 CLI 兑换或使用卡券。
-- `sulaide update`：先跑 `uv tool upgrade sulaide-cli`；若升级失败或版本/提交没变，再跑 `uv tool install --force git+https://github.com/univteam/sulaide-cli.git`（会把固定到某个提交的安装改回跟随 main）。输出旧版本 -> 新版本，然后用新安装的 CLI 执行 `sulaide skills update` 刷新已安装的 skill。需要已安装 uv，且 CLI 是用 `uv tool install` 装的。`--check` 只查询 GitHub，不安装。
+- `sulaide update`：如果当前安装跟随 main，先跑 `uv tool upgrade sulaide-cli`；若安装固定在某个分支/提交、来自本地 checkout，或升级失败/版本提交没变，则跑 `uv tool install --force git+https://github.com/univteam/sulaide-cli.git`（会把固定到某个提交的安装改回跟随 main）。输出旧版本 -> 新版本，然后用新安装的 CLI 执行 `sulaide skills update` 刷新已安装的 skill。需要已安装 uv，且 CLI 是用 `uv tool install` 装的。`--check` 只查询 GitHub，不安装；若安装固定在某个 ref 会返回 `pinned_ref`。
+
+> 注意：`uv tool upgrade sulaide-cli` 只会重新解析**安装时指定的 ref**。如果当初是用 `...sulaide-cli.git@某分支` 或某个提交装的，它会一直提示 "Nothing to upgrade"。这种情况请用 `sulaide update` 或 `uv tool install --force git+https://github.com/univteam/sulaide-cli.git`。
 - `sulaide topup`：CLI 不会直接扣款。`--package` 会为 Key 所属账户创建一笔待支付订单（`POST /api/agent/v1/topup/orders`），服务端返回支付宝官方付款链接（只接受 `alipay.com` 域名），你在浏览器里用支付宝完成付款；CLI 每 3 秒查询一次订单（`GET /api/agent/v1/topup/orders/{order_no}`），确认到账后输出新余额，默认最多等 900 秒（`--timeout`）。`--qr` 在终端打印二维码（需 `uv tool install --with qrcode ...`），`--no-wait` 只输出链接。同一账户 1 小时内最多 5 笔未支付订单；不支持在 CLI 中使用优惠券，需要用券请走 `--web`。
 - 目前素材只支持 UTF-8 文本；PDF、Office、表格、图片等需通过网页上传。
 - 资源库命令（`sulaide resources list` / `resources download`）读取并下载项目的资源版本：源底稿、叙事分析稿、生成图片、导出 PPTX/PDF。
