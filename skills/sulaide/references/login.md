@@ -49,3 +49,7 @@ Run `sulaide auth status`. Success returns the capability contract and `authenti
 | Captcha or email code rejected | Re-run register; check spam folder for the code |
 | HTTP 503 `AGENT_API_DISABLED` | Server-side switch is off; login cannot fix it — tell the user and retry later |
 | "SULAIDE_BASE_URL must use HTTPS" | Unset `SULAIDE_BASE_URL` |
+
+## Keeping the CLI current
+
+`sulaide update --check` compares the installed commit with the latest on GitHub main. `sulaide update` upgrades through uv (`uv tool upgrade`, falling back to a forced reinstall from the GitHub source) and then refreshes installed skills; add `--no-skills` to skip that. If uv is missing, tell the user to install uv first.

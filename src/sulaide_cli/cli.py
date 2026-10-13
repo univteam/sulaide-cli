@@ -333,6 +333,7 @@ def _wait(client: Client, operation_id: str, timeout: float) -> dict:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="sulaide", description="Use the Sulaide Agent workflow API")
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
+    parser.add_argument("--version", action="store_true", help="显示版本（含 git 提交）")
     sub = parser.add_subparsers(dest="area", required=True)
 
     auth = sub.add_parser("auth").add_subparsers(dest="action", required=True)
@@ -403,6 +404,9 @@ def build_parser() -> argparse.ArgumentParser:
     topup.add_argument("--human", action="store_true", help="输出中文摘要而不是 JSON")
     packages = sub.add_parser("packages", help="列出全部积分充值套餐（同 `sulaide topup packages`）")
     packages.add_argument("--human", action="store_true", help="输出中文列表而不是 JSON")
+    upd = sub.add_parser("update", help="通过 uv 升级 sulaide CLI，并刷新已安装的 skill")
+    upd.add_argument("--check", action="store_true", help="只检查是否有新版本，不安装")
+    upd.add_argument("--no-skills", action="store_true", help="升级后不刷新 skill")
     wait = sub.add_parser("wait"); wait.add_argument("operation_id"); wait.add_argument("--timeout", type=float, default=180)
     return parser
 
@@ -516,6 +520,9 @@ def run(args) -> dict:
         return _auth_command(args)
     if args.area == "topup" and args.web:
         return _topup(None, args)
+    if args.area == "update":
+        from . import update
+        return update.check() if args.check else update.update(skills=not args.no_skills)
     if args.area == "skills":
         from . import skills
         if args.action == "list": return skills.status()
@@ -631,6 +638,11 @@ def run(args) -> dict:
 
 
 def main() -> None:
+    if sys.argv[1:2] == ["--version"]:
+        from .update import local_info, _label
+        info = local_info()
+        print(json.dumps(info) if "--json" in sys.argv[2:] else f"sulaide {_label(info)}")
+        return
     parser = build_parser()
     args = parser.parse_args()
     try:
