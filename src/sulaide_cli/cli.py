@@ -96,17 +96,49 @@ class Client:
                                  headers={"Authorization": f"Bearer {self.key}", "Accept": "application/json"})
 
     def request(self, method: str, path: str, *, params=None, json_body=None, stream=False):
-        response = self.http.request(method, self.base + path, params=params, json=json_body)
+        if params:
+            params = {key: value for key, value in params.items() if value is not None}
+        response = self.http.request(method, self.base + path, params=params or None, json=json_body)
         if response.is_error:
-            try:
-                detail = response.json().get("detail", response.text)
-            except ValueError:
-                detail = response.text
-            raise ApiError(response.status_code, detail)
+            raise _http_error(response)
         if stream:
             return response
+        return _unwrap(response.json())
+
+
+def _error_detail(body: dict) -> dict:
+    """Sulaide envelope ``{code, message, data, traceId}`` or FastAPI ``{detail}``."""
+    if isinstance(body.get("detail"), dict):
+        return body["detail"]
+    if "detail" in body:
+        return {"message": str(body["detail"])}
+    detail = {"code": body.get("code"), "message": body.get("message") or "请求失败"}
+    if isinstance(body.get("data"), dict):
+        detail.update({k: v for k, v in body["data"].items() if k in ("reason", "retryable")})
+    if body.get("traceId"):
+        detail["trace_id"] = body["traceId"]
+    return detail
+
+
+def _http_error(response) -> "ApiError":
+    try:
         body = response.json()
-        return body.get("data", body)
+    except ValueError:
+        return ApiError(response.status_code, response.text)
+    if not isinstance(body, dict):
+        return ApiError(response.status_code, response.text)
+    return ApiError(response.status_code, _error_detail(body))
+
+
+def _unwrap(body):
+    """Business errors arrive as HTTP 200 with ``code != 0``; never return ``data: null`` as success."""
+    if isinstance(body, dict) and "code" in body and body.get("code") not in (0, None):
+        try:
+            status = int(body["code"])
+        except (TypeError, ValueError):
+            status = 400
+        raise ApiError(status, _error_detail(body))
+    return body.get("data", body) if isinstance(body, dict) else body
 
 
 def _auth_request(method: str, path: str, *, token: str | None = None, json_body=None):
@@ -116,15 +148,8 @@ def _auth_request(method: str, path: str, *, token: str | None = None, json_body
     with httpx.Client(timeout=30, follow_redirects=False, headers=headers) as client:
         response = client.request(method, _base_url() + path, json=json_body)
     if response.is_error:
-        try:
-            detail = response.json().get("detail", response.text)
-        except ValueError:
-            detail = response.text
-        raise ApiError(response.status_code, detail)
-    body = response.json()
-    if body.get("code", 0) != 0:
-        raise ApiError(int(body.get("code") or 400), body.get("message", "请求失败"))
-    return body.get("data", body)
+        raise _http_error(response)
+    return _unwrap(response.json())
 
 
 def _auth_login(username: str, password: str) -> dict:
