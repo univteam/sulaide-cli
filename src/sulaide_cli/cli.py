@@ -382,6 +382,7 @@ def build_parser() -> argparse.ArgumentParser:
     coupons.add_argument("--size", type=int, default=20)
     coupons.add_argument("--human", action="store_true", help="输出中文列表而不是 JSON")
     topup = sub.add_parser("topup", help="积分充值：列出套餐 / 生成支付宝付款链接并等待到账 / --web 打开网页充值页")
+    topup.add_argument("action", nargs="?", choices=("packages",), help="packages：列出全部充值套餐")
     topup.add_argument("--package", type=int, help="套餐 ID（不填则列出可购买的套餐）")
     topup.add_argument("--open", action="store_true", help="在浏览器打开支付宝付款页")
     topup.add_argument("--qr", action="store_true", help="在终端打印付款链接二维码（需安装 qrcode）")
@@ -391,6 +392,8 @@ def build_parser() -> argparse.ArgumentParser:
     topup.add_argument("--request-id")
     topup.add_argument("--web", action="store_true", help="只在浏览器打开官网充值页")
     topup.add_argument("--human", action="store_true", help="输出中文摘要而不是 JSON")
+    packages = sub.add_parser("packages", help="列出全部积分充值套餐（同 `sulaide topup packages`）")
+    packages.add_argument("--human", action="store_true", help="输出中文列表而不是 JSON")
     wait = sub.add_parser("wait"); wait.add_argument("operation_id"); wait.add_argument("--timeout", type=float, default=180)
     return parser
 
@@ -424,11 +427,26 @@ def _print_qr(text: str) -> bool:
 def _packages_summary(result: dict) -> str:
     lines = ["可购买的积分套餐（用 `sulaide topup --package <ID>` 下单）："]
     for item in result.get("items") or []:
-        extra = f"，{item['promotion_label']}" if item.get("promotion_label") else ""
+        extra = ""
+        if item.get("original_price") and item.get("original_price") != item.get("price"):
+            extra += f"（原价 ¥{item['original_price']}）"
+        if item.get("promotion_label"):
+            extra += f"，{item['promotion_label']}"
+        if item.get("promotion_description"):
+            extra += f"：{item['promotion_description']}"
+        if item.get("purchasable") is False:
+            extra += "（不可通过 CLI 购买）"
         lines.append(f"- [{item.get('id')}] {item.get('name')}：¥{item.get('price')} → {item.get('credit_amount')} 积分{extra}")
     if len(lines) == 1:
         lines.append("（暂无上架套餐）")
     return "\n".join(lines)
+
+
+def _list_packages(client: "Client") -> dict:
+    result = client.request("GET", "/topup/packages")
+    if isinstance(result, dict):
+        result.setdefault("how_to_buy", "sulaide topup --package <ID> --open")
+    return result
 
 
 def _topup(client: "Client", args) -> dict:
@@ -439,7 +457,7 @@ def _topup(client: "Client", args) -> dict:
     if args.status:
         return client.request("GET", f"/topup/orders/{args.status}")
     if args.package is None:
-        return client.request("GET", "/topup/packages")
+        return _list_packages(client)
     key = f"topup:{args.package}"
     rid = _request_id(key, args.request_id)
     order = client.request("POST", "/topup/orders", json_body={"package_id": args.package, "request_id": rid})
@@ -556,6 +574,8 @@ def run(args) -> dict:
             raise ValueError("Downloaded artifact is not a PPTX ZIP package")
         temp.replace(destination)
         return {"path": str(destination), "size_bytes": len(response.content), "source_hash": response.headers.get("x-sulaide-source-hash")}
+    if args.area == "packages" or (args.area == "topup" and args.action == "packages"):
+        return _list_packages(client)
     if args.area == "topup": return _topup(client, args)
     if args.area == "credits": return client.request("GET", "/credits")
     if args.area == "coupons":
@@ -574,6 +594,8 @@ def main() -> None:
         result = run(args)
         if args.area == "credits" and args.human:
             print(_credits_summary(result))
+        elif args.area == "packages" and args.human:
+            print(_packages_summary(result))
         elif args.area == "topup" and args.human:
             print(_topup_summary(result))
         elif args.area == "coupons" and args.human:

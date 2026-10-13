@@ -73,7 +73,8 @@ sulaide auth invite-code # 查看本账户邀请码（注册时自动缓存，�
 sulaide auth logout     # 删除本地保存的 Key
 sulaide credits         # 查询剩余积分（JSON）；--human 输出一行中文摘要
 sulaide coupons --status available --human   # 查询卡券（只读，可按状态筛选）
-sulaide topup --human   # 列出可购买的积分套餐
+sulaide packages --human   # 列出全部充值套餐（ID、名称、价格、积分、优惠）；等同 `sulaide topup packages`
+sulaide topup --human   # 不带 --package 时同样列出套餐并提示如何下单
 sulaide topup --package 3 --open   # 生成支付宝付款链接并在浏览器打开，等待到账后显示新余额
 sulaide topup --status <订单号> --human   # 查询充值订单状态
 sulaide topup --web     # 只打开官网充值页

@@ -88,6 +88,15 @@ class TopupCommandTests(unittest.TestCase):
             self._main("topup", "--package", "3", "--timeout", "10")
         self.assertEqual(ctx.exception.code, 5)
 
+    def test_packages_commands(self):
+        for argv in (("packages", "--human"), ("topup", "packages", "--human")):
+            out, _ = self._main(*argv)
+            self.assertIn("[3] 基础包", out)
+            self.assertIn("--package <ID>", out)
+        out, _ = self._main("topup")
+        self.assertEqual(json.loads(out)["how_to_buy"], "sulaide topup --package <ID> --open")
+        self.assertNotIn("POST", [c[0] for c in self.calls])
+
     def test_status(self):
         self.statuses = ["paid"]
         out, _ = self._main("topup", "--status", "CO1")
