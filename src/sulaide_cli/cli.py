@@ -141,6 +141,25 @@ def _unwrap(body):
     return body.get("data", body) if isinstance(body, dict) else body
 
 
+def _check_download_response(response) -> None:
+    """Raise before anything touches disk unless the body is a real PPTX (ZIP) file.
+
+    Business errors arrive as HTTP 200 + JSON ``{code, message}``; never write them as a file."""
+    if response.is_error:
+        raise _http_error(response)
+    content = response.content or b""
+    if "application/json" in response.headers.get("content-type", "") or content[:1] == b"{":
+        try:
+            body = response.json()
+        except ValueError:
+            body = None
+        if isinstance(body, dict):
+            _unwrap(body)  # raises ApiError for code != 0
+        raise ValueError("下载结果不是 PPTX 文件（服务端返回了 JSON）")
+    if not content.startswith(b"PK"):
+        raise ValueError("Downloaded artifact is not a PPTX ZIP package")
+
+
 def _auth_request(method: str, path: str, *, token: str | None = None, json_body=None):
     headers = {"Accept": "application/json"}
     if token:
@@ -639,14 +658,15 @@ def run(args) -> dict:
             return result
         destination = args.output.expanduser().resolve()
         if destination.exists(): raise FileExistsError(f"Refusing to overwrite {destination}")
+        # native exports have no run_id: omit the param entirely (httpx would send `run_id=`
+        # for None, which the server rejected with a 422).
+        params = {"manifest_hash": args.manifest_hash}
+        if args.run_id: params["run_id"] = args.run_id
         response = client.http.get(f"{client.base}/projects/{args.project_id}/exports/{args.version_id}/download",
-            params={"manifest_hash": args.manifest_hash, "run_id": args.run_id})
-        if response.is_error: raise ApiError(response.status_code, response.text)
+            params=params)
+        _check_download_response(response)
         temp = destination.with_name(destination.name + ".part")
         temp.write_bytes(response.content)
-        if not response.content.startswith(b"PK"):
-            temp.unlink(missing_ok=True)
-            raise ValueError("Downloaded artifact is not a PPTX ZIP package")
         temp.replace(destination)
         return {"path": str(destination), "size_bytes": len(response.content), "source_hash": response.headers.get("x-sulaide-source-hash")}
     if args.area == "packages" or (args.area == "topup" and args.action == "packages"):

@@ -172,6 +172,21 @@ sulaide --version       # 显示版本与 git 提交
 
 登录后 Key 保存在 `~/.sulaide/auth.json`（目录 `0700`，文件 `0600`），工作流命令会自动使用。密码只会交互输入，不接受命令行参数。
 
+### 导出 PPTX（三种模式）
+
+```bash
+# native（默认）：用生成的页面图片拼成 PPTX，最快；没有 run_id，按版本 + manifest hash 直接下载
+sulaide export start PROJECT_ID --version-id VERSION_ID --manifest-hash HASH --mode native
+sulaide export download PROJECT_ID VERSION_ID HASH --output deck.pptx
+
+# text_editable（图片 + 可编辑文本框）/ full_editable（完全重建为可编辑形状和文字，最慢）：会返回 run_id
+sulaide export start PROJECT_ID --version-id VERSION_ID --manifest-hash HASH --mode full_editable --page-numbers 1,2,3
+sulaide wait OPERATION_ID
+sulaide export download PROJECT_ID VERSION_ID HASH --run-id RUN_ID --output deck.pptx
+```
+
+`--run-id` 只在可编辑模式下需要，不要把 operation ID 当 run_id 传。下载时，服务端返回错误（包括 HTTP 200 + 非零 `code`）CLI 会直接报错，不会写文件；只有真正的 PPTX（ZIP）才会落盘。
+
 ### 资源库（查看与下载项目资源）
 
 ```bash
