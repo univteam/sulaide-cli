@@ -33,6 +33,7 @@ For an end-to-end request ("make me a PPT from this"), read and run login (only 
 
 - 积分 / credits: `sulaide credits` (add `--human` for a one-line summary).
 - 优惠券 / 卡券 / coupons: `sulaide coupons [--status available|not_started|used|expired|voided] [--human]`. Use when the user asks what coupons they have, which are still usable, or when they expire. Redeem codes are not returned and redeeming or applying coupons is not available through the CLI; send the user to the Sulaide web app for that.
+- 充值 / 购买积分 / top up: read `references/billing.md`. Never pay on the user's behalf; only hand them the Alipay link.
 
 Run stages in order: source → analysis → preview → export. Resume from the stage the handoff reached; do not restart earlier stages unless the user asks.
 
@@ -54,7 +55,7 @@ The CLI prints errors as JSON on stderr with `http_status`, `reason`, `retryable
 | HTTP 429 `AGENT_RATE_LIMITED` | Per-account rate limit (default 120 reads / 10 writes per minute) | Wait, then retry the same request ID |
 | HTTP 503 `AGENT_RATE_LIMIT_UNAVAILABLE` | Temporary server issue | Retry later with the same request ID |
 | exit 3 / HTTP 409 (`SOURCE_REVISION_CONFLICT`, `PRESENTATION_VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`) | State changed or request ID reused with different input | Re-read the project/version, then decide with the user |
-| Insufficient credits ("积分余额不足") / unpaid pages | Account balance too low | Run `sulaide credits` and report `available`; ask the user to top up in the Sulaide web app; do not retry in a loop |
+| Insufficient credits ("积分余额不足") / unpaid pages | Account balance too low | Run `sulaide credits` and report `available`; offer `sulaide topup` (see `references/billing.md`); do not retry in a loop |
 | exit 5 `wait_timeout` | Operation still running | `sulaide wait OPERATION_ID` again |
 | exit 6 `network_error` | Response lost | Reuse the request ID or query the operation |
 | "SULAIDE_BASE_URL must use HTTPS" | Bad override | Unset `SULAIDE_BASE_URL` to use the default `https://www.sulide.com.cn` |
