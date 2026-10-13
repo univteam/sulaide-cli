@@ -69,7 +69,10 @@ uv tool install .
 sulaide auth register   # 注册账号并初始化 CLI 访问
 sulaide auth login      # 登录已有账号，创建个人 Agent API Key
 sulaide auth status     # 查看当前启用的能力
+sulaide auth invite-code # 查看本账户邀请码（注册时自动缓存，可转发给他人）
 sulaide auth logout     # 删除本地保存的 Key
+sulaide credits         # 查询剩余积分（JSON）；--human 输出一行中文摘要
+sulaide coupons --status available --human   # 查询卡券（只读，可按状态筛选）
 ```
 
 登录后 Key 保存在 `~/.sulaide/auth.json`（目录 `0700`，文件 `0600`），工作流命令会自动使用。密码只会交互输入，不接受命令行参数。
@@ -154,6 +157,8 @@ uv run pytest
 - Key 可在网页「账户 → API Keys」创建或吊销；新建的密钥只显示一次。`sulaide auth register` / `sulaide auth login` 会自动创建并保存 Key。
 - 服务端可能关闭 Agent API，此时命令会返回错误；用 `sulaide auth status` 查看当前启用的能力。
 - 按账户限流：默认每分钟 120 次读、10 次写。
+- `sulaide credits` 调用只读的 `GET /api/agent/v1/credits`，返回 Key 所属账户的 `available` 与 `balance`；若服务端尚未提供该接口会返回 404。
+- `sulaide coupons` 调用只读的 `GET /api/agent/v1/coupons`，列出账户的卡券（名称、金额、状态、有效期），可用 `--status available|not_started|used|expired|voided` 筛选；不返回兑换码，也不能通过 CLI 兑换或使用卡券。
 - 目前素材只支持 UTF-8 文本；PDF、Office、表格、图片等需通过网页上传。
 - 每个 operation 的 request ID 是其恢复标识：响应丢失后请查询原 operation，不要新建请求。
 

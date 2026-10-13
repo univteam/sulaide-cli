@@ -163,6 +163,21 @@ def _captcha_answer(email: str) -> str:
     return input("请输入邮件中的 6 位验证码: ").strip()
 
 
+INVITE_CODE_ENDPOINT = "/api/credits/invite-code"
+
+
+def _fetch_invite_code(token: str) -> str | None:
+    """Best-effort: return the account's invite code, or None if unavailable."""
+    try:
+        payload = _auth_request("GET", INVITE_CODE_ENDPOINT, token=token)
+    except ApiError:
+        return None
+    if isinstance(payload, dict):
+        code = payload.get("invite_code") or payload.get("code")
+        return str(code) if code else None
+    return None
+
+
 def _save_api_key(token: str, username: str, role: str) -> dict:
     account = _auth_request("GET", "/api/account/me", token=token)
     created = _auth_request("POST", "/api/account/api-keys", token=token,
@@ -175,11 +190,17 @@ def _save_api_key(token: str, username: str, role: str) -> dict:
             previous_key_revoked = True
         except ApiError:
             pass
-    _write_auth({
+    auth = {
         "account_id": account["id"], "username": username, "role": role,
         "api_key_id": created["id"], "api_key": created["secret"],
-    })
+    }
+    invite_code = _fetch_invite_code(token)
+    if invite_code:
+        auth["invite_code"] = invite_code
+    _write_auth(auth)
     message = "API Key 已保存到本机权限受限的文件，可直接调用 Agent API。"
+    if invite_code:
+        message += f"邀请码：{invite_code}（可用 `sulaide auth invite-code` 查看）。"
     if not previous_key_revoked:
         message += "旧账户的本地 Key 未能由这次登录撤销；如果不再使用，请到原账户的 API Key 页面撤销。"
     return {"username": username, "role": role, "api_key_saved": True,
@@ -221,6 +242,16 @@ def _auth_command(args) -> dict:
         if os.environ.get("SULAIDE_API_KEY"):
             message += "当前 SULAIDE_API_KEY 环境变量仍然有效，需从运行环境中移除。"
         return {"logged_out": True, "message": message}
+    if args.action == "invite-code":
+        stored = _read_auth()
+        invite_code = stored.get("invite_code")
+        if not invite_code:
+            raise ValueError("本地未保存邀请码；运行 `sulaide auth login`（或 `sulaide auth register`）后即可获取")
+        return {
+            "invite_code": invite_code,
+            "register_url": f"{_base_url()}/register?invite_code={invite_code}",
+            "message": "把邀请码或注册链接发给被邀请人，注册时填写即可（邀请码为可选项）。",
+        }
     raise ValueError("Unsupported auth command")
 
 
@@ -265,6 +296,26 @@ def _emit(value, *, json_mode: bool = True) -> None:
         print(json.dumps(value, ensure_ascii=False, indent=2))
 
 
+def _credits_summary(result: dict) -> str:
+    return f"可用积分：{result.get('available')}（账户余额：{result.get('balance')}）"
+
+
+COUPON_STATUS_LABELS = {"available": "可用", "not_started": "未生效", "used": "已使用",
+                        "expired": "已过期", "voided": "已作废"}
+
+
+def _coupons_summary(result: dict) -> str:
+    items = result.get("items") or []
+    if not items:
+        return "没有符合条件的卡券"
+    lines = [f"共 {result.get('total', len(items))} 张卡券："]
+    for item in items:
+        until = (item.get("valid_until") or "")[:10]
+        label = COUPON_STATUS_LABELS.get(item.get("status"), item.get("status"))
+        lines.append(f"- {item.get('name')}：¥{item.get('amount')}，{label}，有效期至 {until}")
+    return "\n".join(lines)
+
+
 def _wait(client: Client, operation_id: str, timeout: float) -> dict:
     deadline = time.monotonic() + timeout
     delay = 1.0
@@ -292,6 +343,7 @@ def build_parser() -> argparse.ArgumentParser:
     register.add_argument("--invite-code")
     login = auth.add_parser("login", help="登录并保存 Agent API Key")
     login.add_argument("--username", help="用户名或邮箱；密码始终交互式输入")
+    auth.add_parser("invite-code", help="查看本账户的邀请码（可转发给被邀请人）")
     auth.add_parser("logout", help="删除本机保存的 API Key")
     projects = sub.add_parser("projects").add_subparsers(dest="action", required=True)
     projects.add_parser("list")
@@ -322,6 +374,13 @@ def build_parser() -> argparse.ArgumentParser:
         if action == "install": sp.add_argument("--force", action="store_true", help="覆盖非 sulaide 安装的同名目录")
     skills.add_parser("update", help="更新已安装过的 Agent")
     skills.add_parser("list", help="查看检测到的 Agent 与安装状态")
+    credits = sub.add_parser("credits", help="查询当前账户剩余积分")
+    credits.add_argument("--human", action="store_true", help="输出一行中文摘要而不是 JSON")
+    coupons = sub.add_parser("coupons", help="查询当前账户的卡券（只读）")
+    coupons.add_argument("--status", choices=("available", "not_started", "used", "expired", "voided"))
+    coupons.add_argument("--page", type=int, default=1)
+    coupons.add_argument("--size", type=int, default=20)
+    coupons.add_argument("--human", action="store_true", help="输出中文列表而不是 JSON")
     wait = sub.add_parser("wait"); wait.add_argument("operation_id"); wait.add_argument("--timeout", type=float, default=180)
     return parser
 
@@ -396,6 +455,11 @@ def run(args) -> dict:
             raise ValueError("Downloaded artifact is not a PPTX ZIP package")
         temp.replace(destination)
         return {"path": str(destination), "size_bytes": len(response.content), "source_hash": response.headers.get("x-sulaide-source-hash")}
+    if args.area == "credits": return client.request("GET", "/credits")
+    if args.area == "coupons":
+        params = {"page": args.page, "size": args.size}
+        if args.status: params["status"] = args.status
+        return client.request("GET", "/coupons", params=params)
     if args.area == "operations": return client.request("GET", f"/operations/{args.operation_id}")
     if args.area == "wait": return _wait(client, args.operation_id, args.timeout)
     raise ValueError("Unsupported command")
@@ -405,7 +469,13 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
     try:
-        _emit(run(args), json_mode=not args.pretty)
+        result = run(args)
+        if args.area == "credits" and args.human:
+            print(_credits_summary(result))
+        elif args.area == "coupons" and args.human:
+            print(_coupons_summary(result))
+        else:
+            _emit(result, json_mode=not args.pretty)
     except ApiError as exc:
         detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
         reason = detail.get("reason") if isinstance(detail, dict) else None
