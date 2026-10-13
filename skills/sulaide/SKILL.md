@@ -1,6 +1,6 @@
 ---
 name: sulaide
-description: Make, continue, or export a PPT with Sulaide (速来得) through the sulaide CLI — install and log in, list existing projects or start a new one, add source material, build the outline, generate pages, download PPTX, and diagnose Sulaide CLI errors. This single skill routes to detailed step guides in references/.
+description: Make, continue, or export a PPT with Sulaide (速来得) through the sulaide CLI — install and log in, list existing projects or start a new one, add source material, build the outline, generate pages, browse and download resource-library files, download PPTX, and diagnose Sulaide CLI errors. This single skill routes to detailed step guides in references/.
 ---
 
 # Sulaide AI PPT workflow（速来得 工作流总览）
@@ -21,6 +21,7 @@ This is the only Sulaide skill. Each step's detailed instructions live in `refer
 | --- | --- | --- |
 | Install, register, log in, API key problems | `references/login.md` | authenticated account (never the key itself) |
 | List existing projects, get a project list, find a project ID to continue | `references/projects.md` | project list or chosen `project_id` |
+| View or download files in the resource library (source drafts, analysis drafts, generated images, exported PPTX/PDF) | `references/resources.md` | resource list, or local file path of a downloaded resource |
 | Start a deck / add or update material | `references/source.md` | `project_id`, `source_revision` |
 | Build or recover the outline | `references/analysis.md` | `operation_id`, outline, page count |
 | Generate pages, inspect page status | `references/preview.md` | `presentation_version_id`, `manifest_hash` |

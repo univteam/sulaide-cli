@@ -9,3 +9,5 @@ Use the shared `sulaide` CLI and the exact frozen `presentation_version_id` and 
 5. Report the file path, byte size, frozen version, and manifest hash. Opening or inspecting the deck is a separate validation step; do not claim visual fidelity without checking it.
 
 Export runs against Sulaide's existing project and credit rules. Never substitute a newer active version for the requested frozen version.
+
+If the user wants a file that was already exported earlier instead of a fresh export, find it in the resource library: `sulaide resources list PROJECT_ID --resource-type export_pptx` then `sulaide resources download RESOURCE_VERSION_ID --output FILE.pptx` (see `references/resources.md`).

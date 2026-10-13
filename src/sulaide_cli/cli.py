@@ -360,6 +360,15 @@ def build_parser() -> argparse.ArgumentParser:
     pshow = preview.add_parser("show"); pshow.add_argument("project_id", type=int); pshow.add_argument("--version-id", type=int)
     generate = preview.add_parser("generate"); generate.add_argument("project_id", type=int); generate.add_argument("--request-id"); generate.add_argument("--expected-version", type=int)
 
+    resources = sub.add_parser("resources", help="查看和下载项目资源库中的资源").add_subparsers(dest="action", required=True)
+    resources_list = resources.add_parser("list", help="列出资源库中的资源版本")
+    resources_list.add_argument("project_id", type=int)
+    resources_list.add_argument("--resource-type", choices=("upload", "narrative_analysis", "generated_image", "export_pptx", "export_pdf"), help="按资源类型筛选")
+    resources_list.add_argument("--page-number", type=int, help="页码，从 1 开始")
+    resources_download = resources.add_parser("download", help="下载资源库中的一个资源版本")
+    resources_download.add_argument("resource_version_id", type=int)
+    resources_download.add_argument("--output", type=Path, required=True)
+
     export = sub.add_parser("export").add_subparsers(dest="action", required=True)
     export_start = export.add_parser("start"); export_start.add_argument("project_id", type=int); export_start.add_argument("--version-id", type=int, required=True); export_start.add_argument("--manifest-hash", required=True); export_start.add_argument("--mode", choices=("native", "text_editable", "full_editable"), default="native"); export_start.add_argument("--page-numbers", default=""); export_start.add_argument("--request-id")
     download = export.add_parser("download"); download.add_argument("project_id", type=int); download.add_argument("version_id", type=int); download.add_argument("manifest_hash"); download.add_argument("--run-id"); download.add_argument("--output", type=Path, required=True)
@@ -433,6 +442,40 @@ def run(args) -> dict:
         })
         _remember_operation(f"preview:{args.project_id}", rid, (result.get("operation") or {}).get("operation_id"))
         return result
+    if args.area == "resources":
+        if args.action == "list":
+            params = {"project_id": args.project_id}
+            if args.resource_type:
+                params["resource_type"] = args.resource_type
+            if args.page_number is not None:
+                params["page_number"] = args.page_number
+            return client.request("GET", "/resource-versions", params=params)
+        destination = args.output.expanduser().resolve()
+        if destination.exists(): raise FileExistsError(f"Refusing to overwrite {destination}")
+        meta = client.request("GET", f"/resource-versions/{args.resource_version_id}/download")
+        if not isinstance(meta, dict):
+            raise ValueError("Resource download metadata was not an object")
+        url = meta.get("redirect_url") or (meta.get("data") or {}).get("redirect_url")
+        if not url:
+            raise ValueError("Resource download link was not returned")
+        if url.startswith("/"):
+            url = _base_url() + url
+        if httpx.URL(url).host == httpx.URL(_base_url()).host:
+            response = client.http.get(url, follow_redirects=True)
+        else:
+            # Signed storage URLs live on another host: never send the API key there.
+            with httpx.Client(timeout=httpx.Timeout(30, read=90), follow_redirects=True) as anonymous:
+                response = anonymous.get(url)
+        if response.is_error or "application/json" in response.headers.get("content-type", ""):
+            raise ApiError(response.status_code, response.text)
+        content = response.content
+        if not content:
+            raise ValueError("Downloaded resource is empty")
+        temp = destination.with_name(destination.name + ".part")
+        temp.write_bytes(content)
+        temp.replace(destination)
+        return {"path": str(destination), "size_bytes": len(content),
+                "resource_version_id": args.resource_version_id, "filename": meta.get("filename") or str(args.resource_version_id)}
     if args.area == "export":
         if args.action == "start":
             rid = _request_id(f"export:{args.project_id}:{args.version_id}", args.request_id)
