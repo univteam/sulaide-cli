@@ -404,6 +404,15 @@ def build_parser() -> argparse.ArgumentParser:
     topup.add_argument("--human", action="store_true", help="输出中文摘要而不是 JSON")
     packages = sub.add_parser("packages", help="列出全部积分充值套餐（同 `sulaide topup packages`）")
     packages.add_argument("--human", action="store_true", help="输出中文列表而不是 JSON")
+    fb = sub.add_parser("feedback", aliases=["issue"], help="反馈问题：生成预填的 GitHub Issue（自动脱敏）")
+    fb.add_argument("--title")
+    fb.add_argument("--body", "-m", help="问题描述")
+    fb.add_argument("--type", choices=("bug", "feature", "question"), default="bug")
+    fb.add_argument("--error", help="出错的命令或错误输出；传 - 从标准输入读取")
+    fb.add_argument("--stdin", action="store_true", help="从标准输入读取错误输出")
+    fb.add_argument("--no-open", action="store_true", help="只输出链接，不打开浏览器")
+    fb.add_argument("--gh", action="store_true", help="用已登录的 gh 直接创建 Issue")
+    fb.add_argument("--keep-emails", action="store_true", help="不隐藏邮箱地址")
     upd = sub.add_parser("update", help="通过 uv 升级 sulaide CLI，并刷新已安装的 skill")
     upd.add_argument("--check", action="store_true", help="只检查是否有新版本，不安装")
     upd.add_argument("--no-skills", action="store_true", help="升级后不刷新 skill")
@@ -520,6 +529,9 @@ def run(args) -> dict:
         return _auth_command(args)
     if args.area == "topup" and args.web:
         return _topup(None, args)
+    if args.area in ("feedback", "issue"):
+        from . import feedback
+        return feedback.submit(args)
     if args.area == "update":
         from . import update
         return update.check() if args.check else update.update(skills=not args.no_skills)
