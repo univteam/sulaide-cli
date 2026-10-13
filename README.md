@@ -69,6 +69,7 @@ uv tool install .
 sulaide auth register   # 注册账号并初始化 CLI 访问
 sulaide auth login      # 登录已有账号，创建个人 Agent API Key
 sulaide auth status     # 查看当前启用的能力
+sulaide auth invite-code # 查看本账户邀请码（注册时自动缓存，可转发给他人）
 sulaide auth logout     # 删除本地保存的 Key
 sulaide credits         # 查询剩余积分（JSON）；--human 输出一行中文摘要
 sulaide coupons --status available --human   # 查询卡券（只读，可按状态筛选）
@@ -104,6 +105,7 @@ sulaide resources download RESOURCE_VERSION_ID --output FILE   # 下载资源库
 | 步骤 | 文件 | 内容 |
 | --- | --- | --- |
 | 登录 | `references/login.md` | 安装检查、注册/登录、安全保存 API Key、`sulaide auth status` 验证 |
+| 项目 | `references/projects.md` | `sulaide projects list` 获取项目列表，`projects show` 查看详情，复用或新建项目 |
 | 资源库 | `references/resources.md` | `sulaide resources list` 查看项目资源库，`resources download` 下载资源文件 |
 | 1. 素材 | `references/source.md` | 准备或更新项目素材（文本） |
 | 2. 分析 | `references/analysis.md` | 运行或恢复叙事分析，返回大纲和执行状态 |

@@ -24,7 +24,7 @@ Resource types:
 | `export_pptx` | 导出的 PPTX |
 | `export_pdf` | 导出的 PDF |
 
-Report exactly what the server returns: each resource's `resource_version_id`, type, filename, size, and any version or page fields present. Do not infer, renumber, or promise fields the response does not contain. Use `--page-number N` (从 1 开始) when the list is long and the user asks for older entries.
+The response is `{"items": [...]}`. Each item has `id` (the resource version ID — pass it to `resources download`), `project_id`, `resource_type`, `page_number` (slide page, or null), `version_number`, `content_type`, `byte_size`, `filename`, and `created_at`. Report exactly these fields; do not infer or renumber. `--resource-type` filters by type and `--page-number N` filters to versions of slide page N (it is not pagination).
 
 ## 3. Download a resource
 

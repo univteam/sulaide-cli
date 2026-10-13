@@ -163,6 +163,21 @@ def _captcha_answer(email: str) -> str:
     return input("请输入邮件中的 6 位验证码: ").strip()
 
 
+INVITE_CODE_ENDPOINT = "/api/credits/invite-code"
+
+
+def _fetch_invite_code(token: str) -> str | None:
+    """Best-effort: return the account's invite code, or None if unavailable."""
+    try:
+        payload = _auth_request("GET", INVITE_CODE_ENDPOINT, token=token)
+    except ApiError:
+        return None
+    if isinstance(payload, dict):
+        code = payload.get("invite_code") or payload.get("code")
+        return str(code) if code else None
+    return None
+
+
 def _save_api_key(token: str, username: str, role: str) -> dict:
     account = _auth_request("GET", "/api/account/me", token=token)
     created = _auth_request("POST", "/api/account/api-keys", token=token,
@@ -175,11 +190,17 @@ def _save_api_key(token: str, username: str, role: str) -> dict:
             previous_key_revoked = True
         except ApiError:
             pass
-    _write_auth({
+    auth = {
         "account_id": account["id"], "username": username, "role": role,
         "api_key_id": created["id"], "api_key": created["secret"],
-    })
+    }
+    invite_code = _fetch_invite_code(token)
+    if invite_code:
+        auth["invite_code"] = invite_code
+    _write_auth(auth)
     message = "API Key 已保存到本机权限受限的文件，可直接调用 Agent API。"
+    if invite_code:
+        message += f"邀请码：{invite_code}（可用 `sulaide auth invite-code` 查看）。"
     if not previous_key_revoked:
         message += "旧账户的本地 Key 未能由这次登录撤销；如果不再使用，请到原账户的 API Key 页面撤销。"
     return {"username": username, "role": role, "api_key_saved": True,
@@ -221,6 +242,16 @@ def _auth_command(args) -> dict:
         if os.environ.get("SULAIDE_API_KEY"):
             message += "当前 SULAIDE_API_KEY 环境变量仍然有效，需从运行环境中移除。"
         return {"logged_out": True, "message": message}
+    if args.action == "invite-code":
+        stored = _read_auth()
+        invite_code = stored.get("invite_code")
+        if not invite_code:
+            raise ValueError("本地未保存邀请码；运行 `sulaide auth login`（或 `sulaide auth register`）后即可获取")
+        return {
+            "invite_code": invite_code,
+            "register_url": f"{_base_url()}/register?invite_code={invite_code}",
+            "message": "把邀请码或注册链接发给被邀请人，注册时填写即可（邀请码为可选项）。",
+        }
     raise ValueError("Unsupported auth command")
 
 
@@ -312,6 +343,7 @@ def build_parser() -> argparse.ArgumentParser:
     register.add_argument("--invite-code")
     login = auth.add_parser("login", help="登录并保存 Agent API Key")
     login.add_argument("--username", help="用户名或邮箱；密码始终交互式输入")
+    auth.add_parser("invite-code", help="查看本账户的邀请码（可转发给被邀请人）")
     auth.add_parser("logout", help="删除本机保存的 API Key")
     projects = sub.add_parser("projects").add_subparsers(dest="action", required=True)
     projects.add_parser("list")
@@ -420,7 +452,7 @@ def run(args) -> dict:
             return client.request("GET", "/resource-versions", params=params)
         destination = args.output.expanduser().resolve()
         if destination.exists(): raise FileExistsError(f"Refusing to overwrite {destination}")
-        meta = client.request("GET", f"/resource-versions/{args.resource_version_id}/download", params={"redirect": False})
+        meta = client.request("GET", f"/resource-versions/{args.resource_version_id}/download")
         if not isinstance(meta, dict):
             raise ValueError("Resource download metadata was not an object")
         url = meta.get("redirect_url") or (meta.get("data") or {}).get("redirect_url")
