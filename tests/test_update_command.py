@@ -11,6 +11,10 @@ OLD = {"version": "0.2.0", "commit": "a" * 40}
 NEW = {"version": "0.2.0", "commit": "b" * 40}
 
 
+MAIN_SOURCE = {"url": "https://github.com/univteam/sulaide-cli.git", "vcs": "git", "requested_revision": None}
+PINNED_SOURCE = {**MAIN_SOURCE, "requested_revision": "fix/some-pr-branch"}
+
+
 def _proc(rc=0, out="", err=""):
     return subprocess.CompletedProcess([], rc, out, err)
 
@@ -20,6 +24,7 @@ class UpdateTests(unittest.TestCase):
         self.cmds = []
         patch("sulaide_cli.update.shutil.which", side_effect=lambda n: f"/bin/{n}").start()
         patch("sulaide_cli.update.local_info", return_value=OLD).start()
+        self.source = patch("sulaide_cli.update.install_source", return_value=MAIN_SOURCE).start()
         self.addCleanup(patch.stopall)
 
     def _fake_run(self, upgrade_rc=0, after_upgrade=NEW, after_force=NEW):
@@ -49,6 +54,28 @@ class UpdateTests(unittest.TestCase):
         self.assertIn(["tool", "upgrade", "sulaide-cli"], self.cmds)
         self.assertNotIn("install", [c[1] for c in self.cmds if c[0] == "tool"])
         self.assertIn(["skills", "update"], self.cmds)
+
+    def test_pinned_install_skips_upgrade_and_reinstalls_from_main(self):
+        # Regression: install pinned to a PR branch; `uv tool upgrade` said "Nothing to upgrade".
+        self.source.return_value = PINNED_SOURCE
+        self._fake_run(after_upgrade=OLD)
+        result = update.update()
+        self.assertNotIn(["tool", "upgrade", "sulaide-cli"], self.cmds)
+        self.assertIn(["tool", "install", "--force", update.GIT_SOURCE], self.cmds)
+        self.assertTrue(result["changed"])
+
+    def test_local_checkout_install_reinstalls_from_git(self):
+        self.source.return_value = {"url": "file:///src/sulaide-cli", "vcs": None, "requested_revision": None}
+        self._fake_run()
+        update.update()
+        self.assertNotIn(["tool", "upgrade", "sulaide-cli"], self.cmds)
+        self.assertIn(["tool", "install", "--force", update.GIT_SOURCE], self.cmds)
+
+    def test_follows_main(self):
+        self.assertTrue(update._follows_main(MAIN_SOURCE))
+        self.assertTrue(update._follows_main({**MAIN_SOURCE, "requested_revision": "main"}))
+        self.assertFalse(update._follows_main(PINNED_SOURCE))
+        self.assertFalse(update._follows_main({**MAIN_SOURCE, "requested_revision": "ea72898"}))
 
     def test_falls_back_to_force_install_when_unchanged(self):
         self._fake_run(after_upgrade=OLD)

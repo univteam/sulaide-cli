@@ -11,7 +11,7 @@ Follow the numbered steps in README.md, section "给 AI 助手的安装说明 / 
 5. The user runs `sulaide auth login` (or `sulaide auth register`) in their own terminal, or sets `SULAIDE_API_KEY` themselves. Never ask for passwords or keys in chat; never read `~/.sulaide/auth.json`.
 6. `sulaide auth status` and `sulaide credits --human`
 7. If `sulaide` is not found: `uv tool update-shell`, then open a new terminal.
-8. Later upgrades: `sulaide update`.
+8. Later upgrades: `sulaide update`. Manual fallback: `uv tool install --force git+https://github.com/univteam/sulaide-cli.git` (do not rely on `uv tool upgrade sulaide-cli`; it keeps any branch/commit the install was pinned to).
 
 ## If you are developing this repository
 

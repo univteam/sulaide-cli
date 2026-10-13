@@ -31,6 +31,27 @@ def local_info() -> dict:
     return {"version": __version__, "commit": commit}
 
 
+def install_source() -> dict:
+    """Where uv installed this CLI from: git URL and the ref the user pinned (branch/tag/commit), if any.
+
+    `uv tool upgrade` re-resolves the *pinned* ref, so an install made from a PR branch or a
+    commit (e.g. `...sulaide-cli.git@some-branch`) reports "Nothing to upgrade" forever even
+    when main has moved on. Such installs must be reinstalled from the main source instead."""
+    try:
+        raw = metadata.distribution(DIST_NAME).read_text("direct_url.json")
+        data = json.loads(raw) if raw else {}
+    except (metadata.PackageNotFoundError, ValueError):
+        data = {}
+    vcs = data.get("vcs_info") or {}
+    return {"url": data.get("url"), "vcs": vcs.get("vcs"), "requested_revision": vcs.get("requested_revision")}
+
+
+def _follows_main(source: dict) -> bool:
+    url = (source.get("url") or "").removesuffix("/").removesuffix(".git").lower()
+    return (source.get("vcs") == "git" and url.endswith(REPO.lower())
+            and source.get("requested_revision") in (None, "", "main"))
+
+
 def latest_info() -> dict:
     with httpx.Client(timeout=15, headers={"Accept": "application/vnd.github+json"}) as client:
         sha = client.get(LATEST_COMMIT_API).raise_for_status().json()["sha"]
@@ -45,8 +66,14 @@ def check() -> dict:
         available = local["commit"] != latest["commit"]
     else:
         available = local["version"] != latest["version"]
-    return {"current": local, "latest": latest, "update_available": available,
-            "message": "有新版本，运行 `sulaide update` 升级" if available else "已是最新版本"}
+    source = install_source()
+    result = {"current": local, "latest": latest, "update_available": available,
+              "message": "有新版本，运行 `sulaide update` 升级" if available else "已是最新版本"}
+    if source.get("vcs") == "git" and not _follows_main(source):
+        result["pinned_ref"] = source.get("requested_revision")
+        result["message"] += (f"；当前安装固定在 {source.get('requested_revision')}，"
+                              "`uv tool upgrade` 不会升级到 main，请用 `sulaide update`")
+    return result
 
 
 def _uv() -> str:
@@ -100,9 +127,13 @@ def update(*, skills: bool = True) -> dict:
     if name is None:
         raise ValueError(f"当前 sulaide 不是通过 `uv tool install` 安装的，无法自动升级。请运行 `uv tool install --force {GIT_SOURCE}`")
     steps = []
-    upgraded = _run([uv, "tool", "upgrade", name])
-    steps.append({"command": f"uv tool upgrade {name}", "ok": upgraded.returncode == 0})
-    new = _new_info() if upgraded.returncode == 0 else None
+    new = None
+    if _follows_main(install_source()):
+        upgraded = _run([uv, "tool", "upgrade", name])
+        steps.append({"command": f"uv tool upgrade {name}", "ok": upgraded.returncode == 0})
+        new = _new_info() if upgraded.returncode == 0 else None
+    # Pinned to a branch/commit, installed from a local checkout, or upgrade changed nothing:
+    # reinstall from the main git source so the install follows main again.
     if new is None or new == old:
         forced = _run([uv, "tool", "install", "--force", GIT_SOURCE])
         steps.append({"command": f"uv tool install --force {GIT_SOURCE}", "ok": forced.returncode == 0})

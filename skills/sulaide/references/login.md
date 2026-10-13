@@ -52,4 +52,4 @@ Run `sulaide auth status`. Success returns the capability contract and `authenti
 
 ## Keeping the CLI current
 
-`sulaide update --check` compares the installed commit with the latest on GitHub main. `sulaide update` upgrades through uv (`uv tool upgrade`, falling back to a forced reinstall from the GitHub source) and then refreshes installed skills; add `--no-skills` to skip that. If uv is missing, tell the user to install uv first.
+`sulaide update --check` compares the installed commit with the latest on GitHub main. `sulaide update` upgrades through uv (`uv tool upgrade` when the install follows main; otherwise — pinned branch/commit, local checkout, or no change — a forced reinstall from the GitHub main source) and then refreshes installed skills; add `--no-skills` to skip that. If uv is missing, tell the user to install uv first.
