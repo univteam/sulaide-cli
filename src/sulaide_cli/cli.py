@@ -381,13 +381,114 @@ def build_parser() -> argparse.ArgumentParser:
     coupons.add_argument("--page", type=int, default=1)
     coupons.add_argument("--size", type=int, default=20)
     coupons.add_argument("--human", action="store_true", help="输出中文列表而不是 JSON")
+    topup = sub.add_parser("topup", help="积分充值：列出套餐 / 生成支付宝付款链接并等待到账 / --web 打开网页充值页")
+    topup.add_argument("--package", type=int, help="套餐 ID（不填则列出可购买的套餐）")
+    topup.add_argument("--open", action="store_true", help="在浏览器打开支付宝付款页")
+    topup.add_argument("--qr", action="store_true", help="在终端打印付款链接二维码（需安装 qrcode）")
+    topup.add_argument("--no-wait", action="store_true", help="只创建订单并输出付款链接，不等待支付结果")
+    topup.add_argument("--timeout", type=float, default=900, help="等待支付的秒数（默认 900）")
+    topup.add_argument("--status", metavar="ORDER_NO", help="查询某个充值订单的状态")
+    topup.add_argument("--request-id")
+    topup.add_argument("--web", action="store_true", help="只在浏览器打开官网充值页")
+    topup.add_argument("--human", action="store_true", help="输出中文摘要而不是 JSON")
     wait = sub.add_parser("wait"); wait.add_argument("operation_id"); wait.add_argument("--timeout", type=float, default=180)
     return parser
+
+
+WEB_RECHARGE_PATH = "/app/credits"
+TOPUP_POLL_INTERVAL = 3.0
+
+
+def _is_alipay_url(url) -> bool:
+    if not isinstance(url, str):
+        return False
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme == "https" and (host == "alipay.com" or host.endswith(".alipay.com")
+                                          or host == "alipaydev.com" or host.endswith(".alipaydev.com"))
+
+
+def _print_qr(text: str) -> bool:
+    try:
+        import qrcode  # optional: uv tool install 'sulaide-cli[qr]'
+    except ImportError:
+        print("（未安装二维码依赖，安装时加 `--with qrcode` 即可启用终端二维码；也可直接打开链接，支付宝页面内自带扫码）", file=sys.stderr)
+        return False
+    qr = qrcode.QRCode(border=1)
+    qr.add_data(text)
+    qr.make(fit=True)
+    qr.print_ascii(out=sys.stderr, invert=True)
+    return True
+
+
+def _packages_summary(result: dict) -> str:
+    lines = ["可购买的积分套餐（用 `sulaide topup --package <ID>` 下单）："]
+    for item in result.get("items") or []:
+        extra = f"，{item['promotion_label']}" if item.get("promotion_label") else ""
+        lines.append(f"- [{item.get('id')}] {item.get('name')}：¥{item.get('price')} → {item.get('credit_amount')} 积分{extra}")
+    if len(lines) == 1:
+        lines.append("（暂无上架套餐）")
+    return "\n".join(lines)
+
+
+def _topup(client: "Client", args) -> dict:
+    if args.web:
+        url = _base_url() + WEB_RECHARGE_PATH
+        opened = webbrowser.open(url)
+        return {"url": url, "opened": bool(opened), "message": "请在网页上登录后选择套餐并完成支付。"}
+    if args.status:
+        return client.request("GET", f"/topup/orders/{args.status}")
+    if args.package is None:
+        return client.request("GET", "/topup/packages")
+    key = f"topup:{args.package}"
+    rid = _request_id(key, args.request_id)
+    order = client.request("POST", "/topup/orders", json_body={"package_id": args.package, "request_id": rid})
+    state = _read_state()
+    state.pop(f"{key}:latest", None)  # next intentional run creates a new order
+    _write_state(state)
+    payment = order.get("payment") or {}
+    pay_url = payment.get("pay_url")
+    if order.get("status") == "paid" or not pay_url:
+        return order
+    if not _is_alipay_url(pay_url):
+        raise ValueError("服务端返回的支付链接不是支付宝域名，已拒绝打开")
+    print(f"订单号：{order.get('order_no')}，应付 ¥{order.get('payable_amount')}，到账 {order.get('credit_amount')} 积分", file=sys.stderr)
+    print(f"请在浏览器打开以下支付宝链接完成付款（页面内可用支付宝 App 扫码），有效期至 {payment.get('expires_at')}：", file=sys.stderr)
+    print(pay_url, file=sys.stderr)
+    if args.qr:
+        _print_qr(pay_url)
+    if args.open:
+        webbrowser.open(pay_url)
+    if args.no_wait:
+        return order
+    deadline = time.monotonic() + args.timeout
+    print("等待支付结果…（Ctrl+C 退出后可用 `sulaide topup --status <订单号>` 继续查询）", file=sys.stderr)
+    while True:
+        status = client.request("GET", f"/topup/orders/{order['order_no']}")
+        if status.get("status") != "pending_payment":
+            return status
+        if time.monotonic() >= deadline:
+            raise TimeoutError(f"在 {args.timeout:.0f} 秒内未确认支付，订单 {order['order_no']} 仍待支付；付款后可运行 `sulaide topup --status {order['order_no']}`")
+        time.sleep(TOPUP_POLL_INTERVAL)
+
+
+def _topup_summary(result: dict) -> str:
+    if "items" in result and "order_no" not in result:
+        return _packages_summary(result)
+    if "url" in result:
+        return f"充值页：{result['url']}" + ("（已在浏览器打开）" if result.get("opened") else "")
+    status = result.get("status")
+    if status == "paid":
+        bal = result.get("balance") or {}
+        return f"支付成功：订单 {result.get('order_no')}，到账 {result.get('credit_amount')} 积分；当前可用积分 {bal.get('available')}"
+    return f"订单 {result.get('order_no')} 状态：{status}"
 
 
 def run(args) -> dict:
     if args.area == "auth":
         return _auth_command(args)
+    if args.area == "topup" and args.web:
+        return _topup(None, args)
     if args.area == "skills":
         from . import skills
         if args.action == "list": return skills.status()
@@ -455,6 +556,7 @@ def run(args) -> dict:
             raise ValueError("Downloaded artifact is not a PPTX ZIP package")
         temp.replace(destination)
         return {"path": str(destination), "size_bytes": len(response.content), "source_hash": response.headers.get("x-sulaide-source-hash")}
+    if args.area == "topup": return _topup(client, args)
     if args.area == "credits": return client.request("GET", "/credits")
     if args.area == "coupons":
         params = {"page": args.page, "size": args.size}
@@ -472,6 +574,8 @@ def main() -> None:
         result = run(args)
         if args.area == "credits" and args.human:
             print(_credits_summary(result))
+        elif args.area == "topup" and args.human:
+            print(_topup_summary(result))
         elif args.area == "coupons" and args.human:
             print(_coupons_summary(result))
         else:
