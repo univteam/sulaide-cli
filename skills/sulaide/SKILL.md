@@ -33,6 +33,7 @@ For an end-to-end request ("make me a PPT from this"), read and run login (only 
 
 - 积分 / credits: `sulaide credits` (add `--human` for a one-line summary).
 - 优惠券 / 卡券 / coupons: `sulaide coupons [--status available|not_started|used|expired|voided] [--human]`. Use when the user asks what coupons they have, which are still usable, or when they expire. Redeem codes are not returned and redeeming or applying coupons is not available through the CLI; send the user to the Sulaide web app for that.
+- 更新 CLI / update: `sulaide update --check` reports whether a newer version exists; `sulaide update` upgrades via uv and refreshes installed skills (ask the user before upgrading). If an unknown command or field appears, suggest `sulaide update`.
 - 充值 / 购买积分 / top up: read `references/billing.md`. Never pay on the user's behalf; only hand them the Alipay link.
 
 Run stages in order: source → analysis → preview → export. Resume from the stage the handoff reached; do not restart earlier stages unless the user asks.

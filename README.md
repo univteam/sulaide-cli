@@ -78,6 +78,9 @@ sulaide topup --human   # 不带 --package 时同样列出套餐并提示如何�
 sulaide topup --package 3 --open   # 生成支付宝付款链接并在浏览器打开，等待到账后显示新余额
 sulaide topup --status <订单号> --human   # 查询充值订单状态
 sulaide topup --web     # 只打开官网充值页
+sulaide update          # 通过 uv 升级 CLI 并刷新已安装的 skill（--no-skills 跳过）
+sulaide update --check  # 只检查是否有新版本（对比本地提交与 GitHub main 最新提交）
+sulaide --version       # 显示版本与 git 提交
 ```
 
 登录后 Key 保存在 `~/.sulaide/auth.json`（目录 `0700`，文件 `0600`），工作流命令会自动使用。密码只会交互输入，不接受命令行参数。
@@ -176,6 +179,7 @@ uv run pytest
 - 按账户限流：默认每分钟 120 次读、10 次写。
 - `sulaide credits` 调用只读的 `GET /api/agent/v1/credits`，返回 Key 所属账户的 `available` 与 `balance`；若服务端尚未提供该接口会返回 404。
 - `sulaide coupons` 调用只读的 `GET /api/agent/v1/coupons`，列出账户的卡券（名称、金额、状态、有效期），可用 `--status available|not_started|used|expired|voided` 筛选；不返回兑换码，也不能通过 CLI 兑换或使用卡券。
+- `sulaide update`：先跑 `uv tool upgrade sulaide-cli`；若升级失败或版本/提交没变，再跑 `uv tool install --force git+https://github.com/univteam/sulaide-cli.git`（会把固定到某个提交的安装改回跟随 main）。输出旧版本 -> 新版本，然后用新安装的 CLI 执行 `sulaide skills update` 刷新已安装的 skill。需要已安装 uv，且 CLI 是用 `uv tool install` 装的。`--check` 只查询 GitHub，不安装。
 - `sulaide topup`：CLI 不会直接扣款。`--package` 会为 Key 所属账户创建一笔待支付订单（`POST /api/agent/v1/topup/orders`），服务端返回支付宝官方付款链接（只接受 `alipay.com` 域名），你在浏览器里用支付宝完成付款；CLI 每 3 秒查询一次订单（`GET /api/agent/v1/topup/orders/{order_no}`），确认到账后输出新余额，默认最多等 900 秒（`--timeout`）。`--qr` 在终端打印二维码（需 `uv tool install --with qrcode ...`），`--no-wait` 只输出链接。同一账户 1 小时内最多 5 笔未支付订单；不支持在 CLI 中使用优惠券，需要用券请走 `--web`。
 - 目前素材只支持 UTF-8 文本；PDF、Office、表格、图片等需通过网页上传。
 - 资源库命令（`sulaide resources list` / `resources download`）读取并下载项目的资源版本：源底稿、叙事分析稿、生成图片、导出 PPTX/PDF。
@@ -197,4 +201,3 @@ This repository provides the `sulaide` CLI for the Sulaide Agent API and a `sula
 
 Website: [www.sulide.com.cn](https://www.sulide.com.cn) · [Sign up](https://www.sulide.com.cn/register) · [Log in](https://www.sulide.com.cn/login) · License: [Apache-2.0](LICENSE)
 
-#
