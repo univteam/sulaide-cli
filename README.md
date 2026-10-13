@@ -19,6 +19,8 @@
   <a href="#english">English</a>
 </p>
 
+> 🤖 **AI 助手 / AI agents**：用户让你安装或配置本工具时，请直接按 [给 AI 助手的安装说明](#给-ai-助手的安装说明--for-ai-agents) 执行。
+
 # 速来得 · AI PPT 助手
 
 **把已有材料，变成一份专业、可编辑的汇报。**
@@ -48,6 +50,89 @@
 ## sulaide-cli：让编码 Agent 使用速来得
 
 本仓库是速来得 Agent API 的命令行客户端 `sulaide`，以及配套的 `sulaide` skill。装好后，Claude Code、Codex、Cursor、Gemini CLI、GitHub Copilot 等编码 Agent 可以直接帮你把材料做成 PPT：登录 → 上传底稿 → 叙事分析 → 预览 → 导出 PPTX。
+
+## 给 AI 助手的安装说明 / For AI agents
+
+> 用户把本仓库链接发给你并说"帮我 setup / 安装 / 配置"时，按下面的步骤**依次执行**。每一步都可以直接复制运行，执行后先检查结果再进行下一步。
+> If the user shares this repo and asks you to set it up, run these steps in order. Each step is copy-pasteable; check its result before moving on.
+
+**1. 检查 / 安装 uv**
+
+```bash
+uv --version
+```
+
+如果找不到 `uv`，按系统安装（安装后可能需要新开终端，或按第 7 步处理 PATH）：
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# 或 macOS Homebrew
+brew install uv
+```
+
+```powershell
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**2. 安装 CLI**
+
+```bash
+uv tool install git+https://github.com/univteam/sulaide-cli.git
+```
+
+已经装过时会提示已安装，这时改用 `sulaide update`（见第 6 步）。
+
+**3. 验证**
+
+```bash
+sulaide --version
+```
+
+应输出类似 `sulaide 0.2.0@<提交>`。如果提示找不到命令，先看第 7 步。
+
+**4. 把 skill 装到你自己（当前 Agent）**
+
+```bash
+sulaide skills install --agent <name>
+```
+
+`<name>` 取当前 Agent：`claude`（Claude Code）、`codex`、`cursor`、`gemini`（Gemini CLI）、`copilot`（GitHub Copilot CLI）、`opencode`、`windsurf`、`amp`、`pi`、`hermes`；其他读取 `~/.agents/skills` 的 Agent 用 `agents`。不带 `--agent` 会装到所有检测到的 Agent；`sulaide skills list` 可查看检测结果和安装状态。若目标目录已有非 sulaide 安装的同名 `sulaide` 目录，命令会跳过它；先问用户，再决定是否加 `--force`。装完后提醒用户：部分 Agent 需要重启或新开会话才能加载新 skill。
+
+**5. 登录（必须由用户本人输入密码或 Key）**
+
+不要让用户把密码或 API Key 粘贴到对话里，也不要把它们写进命令参数、文件或日志。让用户**在自己的终端里**运行下面其中一种（在 Claude Code 里可以让用户输入 `! sulaide auth login`）：
+
+```bash
+sulaide auth login                  # 已有账号：输入用户名/邮箱，密码不回显；会自动创建并保存 Agent API Key
+sulaide auth register               # 没有账号：交互式注册（需同意条款、可能需要邮箱验证码）
+```
+
+或者让用户在自己的环境/密钥管理里设置 `SULAIDE_API_KEY`（在网页「账户 → API Keys」创建）。Key 保存在 `~/.sulaide/auth.json`（权限 `0600`），不要读取或打印这个文件。
+
+**6. 验证登录与余额**
+
+```bash
+sulaide auth status        # 成功时返回已启用的能力；401 表示未登录或 Key 失效
+sulaide credits --human    # 可用积分
+```
+
+以后升级：`sulaide update`（升级 CLI 并刷新已安装的 skill；`sulaide update --check` 只检查不安装）。
+
+**7. 常见问题**
+
+- **`sulaide: command not found`**：uv 的工具目录不在 PATH 中。运行 `uv tool update-shell`，然后新开终端；当前终端可临时执行 `export PATH="$(uv tool dir --bin):$PATH"`（Windows 新开 PowerShell 即可）。
+- **`uv: command not found`（刚装完）**：新开终端，或执行 `source $HOME/.local/bin/env`（macOS / Linux）。
+- **503 `AGENT_API_DISABLED`**：服务端暂时关闭了 Agent API，稍后再试。
+- **401**：重新执行第 5 步。
+- **积分不足**：`sulaide packages --human` 查看套餐，`sulaide topup --package <ID> --open` 由用户自己用支付宝付款，或 `sulaide topup --web` 打开网页充值。
+
+**8. 完成后告诉用户**
+
+- 安装的版本（`sulaide --version`）、skill 装到了哪个 Agent，是否需要重启 Agent。
+- 登录账号状态和可用积分。
+- 接下来可以直接说："用速来得把这份材料做成 PPT"，Agent 会按 素材 → 叙事分析 → 预览 → 导出 PPTX 的流程执行，生成会消耗账户积分。
 
 ## 安装
 
@@ -197,7 +282,7 @@ uv run pytest
 
 **Sulaide (速来得) is an AI PPT assistant that turns your existing material into a professional, editable presentation.** Upload a draft (Word, PDF, PPTX, spreadsheets, or pasted text), confirm the narrative and page roles, review and regenerate pages, then export an editable PPTX with your master slides, logo, footer, and editable text — not a one-off image.
 
-This repository provides the `sulaide` CLI for the Sulaide Agent API and a `sulaide` agent skill, so coding agents such as Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot can run the workflow for you. Install with `uv tool install git+https://github.com/univteam/sulaide-cli.git`; see the install table above for one-step plugin setup.
+This repository provides the `sulaide` CLI for the Sulaide Agent API and a `sulaide` agent skill, so coding agents such as Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot can run the workflow for you. Install with `uv tool install git+https://github.com/univteam/sulaide-cli.git`; see the install table above for one-step plugin setup. **AI agents:** follow the numbered steps in [给 AI 助手的安装说明 / For AI agents](#给-ai-助手的安装说明--for-ai-agents).
 
 Website: [www.sulide.com.cn](https://www.sulide.com.cn) · [Sign up](https://www.sulide.com.cn/register) · [Log in](https://www.sulide.com.cn/login) · License: [Apache-2.0](LICENSE)
 

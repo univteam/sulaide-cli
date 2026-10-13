@@ -1,0 +1,17 @@
+# sulaide-cli
+
+> Command-line client and agent skill for Sulaide (速来得), an AI PPT assistant (https://www.sulide.com.cn). Lets coding agents turn source material into an editable PPTX: source → narrative analysis → preview → export.
+
+Setup for AI agents: follow README.md section "给 AI 助手的安装说明 / For AI agents" (also summarized in AGENTS.md).
+
+- Install: `uv tool install git+https://github.com/univteam/sulaide-cli.git`, then `sulaide --version`
+- Skill: `sulaide skills install --agent <name>`
+- Login (user types credentials themselves): `sulaide auth login`, or user-set `SULAIDE_API_KEY`
+- Verify: `sulaide auth status`, `sulaide credits --human`
+- Upgrade: `sulaide update`
+
+## Docs
+
+- [README.md](README.md): install, commands, environment variables
+- [AGENTS.md](AGENTS.md): agent setup steps and contributor notes
+- [skills/sulaide/SKILL.md](skills/sulaide/SKILL.md): workflow skill and routing
