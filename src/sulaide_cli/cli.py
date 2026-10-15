@@ -433,6 +433,52 @@ def build_parser() -> argparse.ArgumentParser:
     pshow = preview.add_parser("show"); pshow.add_argument("project_id", type=int); pshow.add_argument("--version-id", type=int)
     generate = preview.add_parser("generate"); generate.add_argument("project_id", type=int); generate.add_argument("--request-id"); generate.add_argument("--expected-version", type=int)
 
+    vstyles = sub.add_parser("visual-styles", help="单页视觉风格（visual_style_id）").add_subparsers(dest="action", required=True)
+    vstyles.add_parser("list", help="列出视觉风格预设")
+    theme = sub.add_parser("theme", help="主题配色 / 章节页模板（预览阶段）").add_subparsers(dest="action", required=True)
+    tset = theme.add_parser("set"); tset.add_argument("project_id", type=int)
+    for color in ("primary", "secondary", "accent", "text-color"):
+        tset.add_argument(f"--{color}", help="#RRGGBB")
+    tset.add_argument("--apply-section-template", action="store_true", help="应用最新章节页模板")
+    _versioned(tset)
+    layout = sub.add_parser("layout", help="查看叙事分析页面列表").add_subparsers(dest="action", required=True)
+    lshow = layout.add_parser("show"); lshow.add_argument("project_id", type=int)
+    pages = sub.add_parser("pages", help="逐页编辑：标题/正文/视觉风格/拆分/合并/重生成图片等").add_subparsers(dest="action", required=True)
+    pedit = pages.add_parser("edit", help="修改本页标题、副标题、正文、讲稿、视觉风格或标题宽度")
+    pedit.add_argument("project_id", type=int); pedit.add_argument("page_number", type=int)
+    pedit.add_argument("--title"); pedit.add_argument("--subtitle"); pedit.add_argument("--content")
+    pedit.add_argument("--content-file", type=Path); pedit.add_argument("--narrative")
+    pedit.add_argument("--visual-style", help="visual_style_id，见 `sulaide visual-styles list`")
+    pedit.add_argument("--title-width", type=float, help="标题区域宽度（px，画布 1600 宽，最小 240）")
+    pedit.add_argument("--subtitle-width", type=float, help="副标题区域宽度（px）")
+    _versioned(pedit)
+    padd = pages.add_parser("add", help="新增页面"); padd.add_argument("project_id", type=int)
+    padd.add_argument("--after", type=int, help="插入到第 N 页之后（默认末尾）"); padd.add_argument("--title"); padd.add_argument("--content")
+    _versioned(padd)
+    for name, help_ in (("delete", "删除页面"), ("duplicate", "复制页面"), ("merge", "合并到上一页（AI 重写标题）")):
+        sp = pages.add_parser(name, help=help_); sp.add_argument("project_id", type=int); sp.add_argument("page_number", type=int)
+        _versioned(sp)
+        if name == "merge": _structure_wait(sp)
+    pmove = pages.add_parser("move", help="上移/下移页面"); pmove.add_argument("project_id", type=int); pmove.add_argument("page_number", type=int)
+    pmove.add_argument("direction", choices=("up", "down")); _versioned(pmove)
+    psplit = pages.add_parser("split", help="在正文第 N 个字符处拆分为两页（AI 重写标题）")
+    psplit.add_argument("project_id", type=int); psplit.add_argument("page_number", type=int)
+    psplit.add_argument("--at", type=int, required=True, help="正文字符偏移，第二页从这里开始"); _versioned(psplit); _structure_wait(psplit)
+    prean = pages.add_parser("reanalyze", help="单页重新分析（重写标题、副标题、正文和叙事）")
+    prean.add_argument("project_id", type=int); prean.add_argument("page_number", type=int); prean.add_argument("--instruction"); prean.add_argument("--request-id")
+    pregen = pages.add_parser("regenerate", help="重新生成本页图片（消耗积分）")
+    pregen.add_argument("project_id", type=int); pregen.add_argument("page_number", type=int)
+    pregen.add_argument("--prompt"); pregen.add_argument("--visual-style"); pregen.add_argument("--request-id")
+    pimg = pages.add_parser("edit-image", help="按指令修改本页图片（消耗积分）")
+    pimg.add_argument("project_id", type=int); pimg.add_argument("page_number", type=int)
+    pimg.add_argument("--prompt", required=True); pimg.add_argument("--reference-image", type=Path); pimg.add_argument("--request-id")
+    phist = pages.add_parser("images", help="查看本页图片历史版本"); phist.add_argument("project_id", type=int); phist.add_argument("slide_id")
+    prest = pages.add_parser("restore-image", help="恢复本页的历史图片")
+    prest.add_argument("project_id", type=int); prest.add_argument("slide_id")
+    prest.add_argument("--source-version", type=int, required=True, help="images 输出里的 source_version_id")
+    prest.add_argument("--version-id", type=int, required=True, help="当前 active 版本 ID"); prest.add_argument("--manifest-hash", required=True)
+    prest.add_argument("--request-id")
+
     resources = sub.add_parser("resources", help="查看和下载项目资源库中的资源").add_subparsers(dest="action", required=True)
     resources_list = resources.add_parser("list", help="列出资源库中的资源版本")
     resources_list.add_argument("project_id", type=int)
@@ -444,6 +490,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     export = sub.add_parser("export").add_subparsers(dest="action", required=True)
     export_start = export.add_parser("start"); export_start.add_argument("project_id", type=int); export_start.add_argument("--version-id", type=int, required=True); export_start.add_argument("--manifest-hash", required=True); export_start.add_argument("--mode", choices=("native", "text_editable", "full_editable"), default="native"); export_start.add_argument("--page-numbers", default=""); export_start.add_argument("--request-id")
+    echeck = export.add_parser("check", help="导出前质量检查"); echeck.add_argument("project_id", type=int); echeck.add_argument("--version-id", type=int, required=True); echeck.add_argument("--manifest-hash", required=True)
     download = export.add_parser("download"); download.add_argument("project_id", type=int); download.add_argument("version_id", type=int); download.add_argument("manifest_hash"); download.add_argument("--run-id"); download.add_argument("--output", type=Path, required=True)
 
     operations = sub.add_parser("operations").add_subparsers(dest="action", required=True)
@@ -598,6 +645,119 @@ def _topup_summary(result: dict) -> str:
     return f"订单 {result.get('order_no')} 状态：{status}"
 
 
+def _versioned(parser) -> None:
+    parser.add_argument("--request-id")
+    parser.add_argument("--expected-version", type=int, help="预期的编辑版本 ID（layout show 输出）；省略则用当前版本")
+    parser.add_argument("--expected-revision", type=int, help="预期的 manifest_revision；省略则用当前值")
+
+
+def _structure_wait(parser) -> None:
+    parser.add_argument("--no-wait", action="store_true", help="只启动标题任务，不等待并应用")
+    parser.add_argument("--timeout", type=float, default=180)
+
+
+def _body_key(body: dict) -> str:
+    import hashlib
+    return hashlib.sha256(json.dumps(body, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
+
+
+def _write(client, key: str, method: str, path: str, body: dict, explicit_rid=None) -> dict:
+    """Idempotent write: the request_id is reused only for the same command + body."""
+    command = f"{key}:{_body_key(body)}"
+    rid = _request_id(command, explicit_rid)
+    result = client.request(method, path, json_body={"request_id": rid, **body})
+    _remember_operation(command, rid, (result.get("operation") or {}).get("operation_id"))
+    return result
+
+
+def _version_body(args) -> dict:
+    return {k: v for k, v in (("expected_presentation_version_id", getattr(args, "expected_version", None)),
+                              ("expected_manifest_revision", getattr(args, "expected_revision", None))) if v is not None}
+
+
+def _structure(client, args, kind: str) -> dict:
+    base = f"/projects/{args.project_id}"
+    body = {**_version_body(args), **({"split_offset": args.at} if kind == "split" else {})}
+    started = _write(client, f"pages_{kind}:{args.project_id}:{args.page_number}", "POST",
+                     f"{base}/pages/{args.page_number}/{kind}", body, args.request_id)
+    if args.no_wait:
+        return started
+    run_id = started["run_id"]
+    deadline = time.monotonic() + args.timeout
+    while True:
+        run = client.request("GET", f"{base}/structure-runs/{run_id}")
+        if run.get("status") == "succeeded":
+            break
+        if run.get("status") in ("failed", "cancelled"):
+            raise ApiError(409, {"reason": "TITLE_RUN_FAILED", "run": run})
+        if time.monotonic() > deadline:
+            raise ApiError(504, {"reason": "TITLE_RUN_TIMEOUT", "run_id": run_id,
+                                 "hint": "稍后重新运行同一命令即可继续"})
+        time.sleep(2)
+    apply_body = {"run_id": run_id, "kind": kind, "page_number": args.page_number,
+                  "expected_presentation_version_id": started.get("presentation_version_id"),
+                  "expected_manifest_revision": started.get("manifest_revision"),
+                  **({"split_offset": args.at} if kind == "split" else {})}
+    return _write(client, f"pages_{kind}_apply:{args.project_id}", "POST",
+                  f"{base}/structure-runs/{run_id}/apply", apply_body)
+
+
+def _pages(client, args) -> dict:
+    base = f"/projects/{args.project_id}"
+    a = args.action
+    if a == "images":
+        return client.request("GET", f"{base}/pages/{args.slide_id}/image-versions")
+    if a == "restore-image":
+        return _write(client, f"image_restore:{args.project_id}:{args.slide_id}", "POST",
+                      f"{base}/pages/{args.slide_id}/image-versions/restore",
+                      {"source_version_id": args.source_version, "expected_presentation_version_id": args.version_id,
+                       "expected_manifest_hash": args.manifest_hash}, args.request_id)
+    if a in ("split", "merge"):
+        return _structure(client, args, a)
+    if a == "add":
+        body = {**_version_body(args), **{k: v for k, v in (("after_page", args.after), ("title", args.title),
+                                                             ("content", args.content)) if v is not None}}
+        return _write(client, f"pages_add:{args.project_id}", "POST", f"{base}/pages", body, args.request_id)
+    page = f"{base}/pages/{args.page_number}"
+    key = f"pages_{a}:{args.project_id}:{args.page_number}"
+    if a == "edit":
+        content = args.content_file.read_text(encoding="utf-8") if args.content_file else args.content
+        fields = {k: v for k, v in (("title", args.title), ("subtitle", args.subtitle), ("content", content),
+                                    ("narrative", args.narrative), ("visual_style_id", args.visual_style),
+                                    ("title_width", args.title_width), ("subtitle_width", args.subtitle_width))
+                  if v is not None}
+        if not fields: raise ValueError("没有要修改的字段（--title/--subtitle/--content/--narrative/--visual-style/--title-width/--subtitle-width）")
+        return _write(client, key, "PATCH", page, {**_version_body(args), **fields}, args.request_id)
+    if a in ("delete", "duplicate"):
+        return _write(client, key, "POST", f"{page}/{a}", _version_body(args), args.request_id)
+    if a == "move":
+        return _write(client, key, "POST", f"{page}/move", {**_version_body(args), "direction": args.direction}, args.request_id)
+    if a == "reanalyze":
+        return _write(client, key, "POST", f"{page}/reanalyze",
+                      {"instruction": args.instruction} if args.instruction else {}, args.request_id)
+    if a == "regenerate":
+        body = {k: v for k, v in (("prompt", args.prompt), ("visual_style_id", args.visual_style)) if v}
+        return _write(client, key, "POST", f"{page}/regenerate", body, args.request_id)
+    if a == "edit-image":
+        body = {"prompt": args.prompt}
+        if args.reference_image:
+            import base64, mimetypes
+            mime = mimetypes.guess_type(args.reference_image.name)[0] or "image/png"
+            body["reference_image"] = f"data:{mime};base64," + base64.b64encode(args.reference_image.read_bytes()).decode()
+        return _write(client, key, "POST", f"{page}/edit-image", body, args.request_id)
+    raise ValueError(a)
+
+
+def _theme(client, args) -> dict:
+    colors = {k: v for k, v in (("primary", args.primary), ("secondary", args.secondary), ("accent", args.accent),
+                                ("text_color", args.text_color)) if v}
+    if not colors and not args.apply_section_template:
+        raise ValueError("请至少指定一个颜色或 --apply-section-template")
+    return _write(client, f"theme:{args.project_id}", "POST", f"/projects/{args.project_id}/theme",
+                  {**_version_body(args), **colors, "apply_latest_section_template": args.apply_section_template},
+                  args.request_id)
+
+
 def run(args) -> dict:
     if args.area == "auth":
         return _auth_command(args)
@@ -628,6 +788,17 @@ def run(args) -> dict:
         return result
     if args.area == "styles":
         return client.request("GET", "/styles")
+    if args.area == "visual-styles":
+        return client.request("GET", "/visual-styles")
+    if args.area == "layout":
+        return client.request("GET", f"/projects/{args.project_id}/layout")
+    if args.area == "pages":
+        return _pages(client, args)
+    if args.area == "theme":
+        return _theme(client, args)
+    if args.area == "export" and args.action == "check":
+        return client.request("GET", f"/projects/{args.project_id}/export-check",
+                              params={"version_id": args.version_id, "manifest_hash": args.manifest_hash})
     if args.area == "source":
         file_path = getattr(args, "file", None)
         if args.action == "upload":

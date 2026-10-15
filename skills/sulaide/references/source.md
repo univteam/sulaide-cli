@@ -23,6 +23,7 @@ When to ask the user (ask once, together, before `source set`; do not guess):
 - **Language**: ask if the material and the request disagree or are mixed; otherwise use the request's language.
 - **Page count**: ask unless the user stated it; it is strict, so a wrong value means re-analysis.
 - **Master template**: run `sulaide styles list`; if the user has masters, ask which one (or none). If the list is empty, say the default fixed layer will be used.
+- **Visual style (视觉风格)**: chosen per page by Sulaide after analysis (default 咨询详细, cover 奢华品牌). Ask only if the user mentions a look (e.g. blueprint, data-heavy, academic); then apply it with `sulaide pages edit P N --visual-style ID` (IDs from `sulaide visual-styles list`) — see `references/analysis.md`.
 - **Narrative preference**: ask only if the purpose is unclear (formal report → rigorous; talk or storytelling → fluent); otherwise use the default and say so.
 
 `--source-page-count` only records how many pages the original document had; it is not the target.

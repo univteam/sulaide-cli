@@ -195,6 +195,24 @@ sulaide analysis start PROJECT_ID --expected-revision 1 --structure-requirements
 
 > 不兼容变更：Agent API 的 `PUT /projects/{id}/source` 不再接受 `page_count`（改名为 `source_page_count`，表示底稿本身页数；目标页数是 `target_page_count`），并拒绝未知字段。请用 `sulaide update` 升级 CLI。
 
+### 逐页编辑与预览调整
+
+```bash
+sulaide layout show PROJECT_ID                      # 页面列表 + 编辑版本（presentation_version_id / manifest_revision）
+sulaide pages edit PROJECT_ID 2 --title "新标题" --visual-style luxury_brand --title-width 800 \
+  --expected-version VERSION_ID --expected-revision REV   # 版本不一致返回 409
+sulaide pages add|delete|duplicate|move ...         # 新增 / 删除 / 复制 / 上移下移
+sulaide pages split PROJECT_ID 3 --at 120           # 按正文字符位置拆分，AI 重写两页标题
+sulaide pages merge PROJECT_ID 4                    # 第 4 页合并到第 3 页
+sulaide pages reanalyze PROJECT_ID 2 --instruction "突出数据"
+sulaide visual-styles list                          # 视觉风格 ID
+sulaide pages regenerate PROJECT_ID 2 --prompt "更简洁"     # 重新生成本页图片（消耗积分）
+sulaide pages edit-image PROJECT_ID 2 --prompt "主色改成蓝色"  # 按指令改图（消耗积分）
+sulaide pages images PROJECT_ID SLIDE_ID            # 图片历史；restore-image 恢复
+sulaide theme set PROJECT_ID --primary "#1F4E79" --apply-section-template
+sulaide export check PROJECT_ID --version-id V --manifest-hash H   # 导出前质量检查
+```
+
 ### 导出 PPTX（三种模式）
 
 ```bash
