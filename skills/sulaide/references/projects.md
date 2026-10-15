@@ -23,12 +23,12 @@ Common failures are listed in the error table in `SKILL.md`: 401 means re-login,
 sulaide projects show PROJECT_ID
 ```
 
-Use this to confirm a project before reusing it: check it exists, and read `source_revision` / presentation state from the response. If the user describes a project by title rather than ID, match it against `project_title` from `projects list` and confirm the choice with the user before acting. Never guess a `project_id`.
+Use this to confirm a project before reusing it: check it exists, and read `source_revision`, `settings` (language, target page count, narrative preference, master template), and presentation state from the response. If the user describes a project by title rather than ID, match it against `project_title` from `projects list` and confirm the choice with the user before acting. Never guess a `project_id`.
 
 ## 4. Reuse or create
 
 - **Reuse** when the user asks to continue, fix, re-export, or list something that already exists: take the item's `id` from the list (it is the project ID) and hand it to the matching stage guide (`references/source.md`, `references/analysis.md`, `references/preview.md`, or `references/export.md`).
-- **Create** only when the user wants new work and no existing project fits: `sulaide projects create --title "..."`. Keep the returned `project_id` and `request_id` in the handoff.
+- **Create** only when the user wants new work and no existing project fits: `sulaide projects create --title "..." [--language zh|en]` (language defaults to `zh`; the other project settings are set with `source set`, see `references/source.md`). Keep the returned `project_id` and `request_id` in the handoff.
 - Creating duplicates a project the user already asked about is a real mistake; when in doubt, list first and confirm with the user.
 
 ## 5. Handoff

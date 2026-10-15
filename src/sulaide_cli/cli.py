@@ -374,6 +374,22 @@ def _wait(client: Client, operation_id: str, timeout: float) -> dict:
     raise TimeoutError(f"Wait timed out for operation {operation_id}; it was not cancelled")
 
 
+NARRATIVE_PREFERENCES = {"rigorous": "rigorous_structure", "fluent": "fluent_expression"}
+
+
+def _source_options(args) -> dict:
+    """Web upload-panel settings; only explicitly given values are sent (narrative always)."""
+    if args.target_pages is not None and not 1 <= args.target_pages <= 50:
+        raise ValueError("--target-pages 必须在 1–50 之间")
+    options = {
+        "project_title": args.title, "language": args.language, "target_page_count": args.target_pages,
+        "style_id": args.style_id, "source_page_count": args.source_page_count,
+    }
+    body = {key: value for key, value in options.items() if value is not None}
+    body["narrative_preference"] = NARRATIVE_PREFERENCES[args.narrative]
+    return body
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="sulaide", description="Use the Sulaide Agent workflow API")
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
@@ -394,13 +410,25 @@ def build_parser() -> argparse.ArgumentParser:
     projects.add_parser("list")
     show = projects.add_parser("show"); show.add_argument("project_id", type=int)
     create = projects.add_parser("create"); create.add_argument("--title", default="新PPT"); create.add_argument("--request-id")
+    create.add_argument("--language", choices=("zh", "en"), help="输出语言，默认 zh")
 
     source = sub.add_parser("source").add_subparsers(dest="action", required=True)
     upload = source.add_parser("upload"); upload.add_argument("project_id", type=int); upload.add_argument("file", type=Path); upload.add_argument("--request-id"); upload.add_argument("--expected-revision", type=int)
     set_source = source.add_parser("set"); set_source.add_argument("project_id", type=int); set_source.add_argument("--text"); set_source.add_argument("--file", type=Path); set_source.add_argument("--request-id"); set_source.add_argument("--expected-revision", type=int)
+    for sp in (upload, set_source):
+        sp.add_argument("--title", help="项目标题")
+        sp.add_argument("--language", choices=("zh", "en"), help="输出语言（默认沿用项目语言，zh）")
+        sp.add_argument("--target-pages", type=int, help="页数设定：严格按此页数规划叙事结构（1–50）")
+        sp.add_argument("--narrative", choices=("rigorous", "fluent"), default="rigorous",
+                        help="叙事偏好：rigorous=严谨架构（默认），fluent=流利表达")
+        sp.add_argument("--style-id", type=int, help="母版 ID（见 `sulaide styles list`）；不传则用项目默认固定层")
+        sp.add_argument("--source-page-count", type=int, help="底稿本身的页数（仅记录，可省略）")
 
     analysis = sub.add_parser("analysis").add_subparsers(dest="action", required=True)
     start = analysis.add_parser("start"); start.add_argument("project_id", type=int); start.add_argument("--request-id"); start.add_argument("--page-count", type=int); start.add_argument("--expected-revision", type=int)
+    start.add_argument("--structure-requirements", help="结构要求（可选），例如：按问题、证据、建议组织")
+    styles = sub.add_parser("styles", help="母版（PPT 模板）").add_subparsers(dest="action", required=True)
+    styles.add_parser("list", help="列出可用母版及其 ID")
     preview = sub.add_parser("preview").add_subparsers(dest="action", required=True)
     pshow = preview.add_parser("show"); pshow.add_argument("project_id", type=int); pshow.add_argument("--version-id", type=int)
     generate = preview.add_parser("generate"); generate.add_argument("project_id", type=int); generate.add_argument("--request-id"); generate.add_argument("--expected-version", type=int)
@@ -593,9 +621,13 @@ def run(args) -> dict:
         if args.action == "list": return client.request("GET", "/projects")
         if args.action == "show": return client.request("GET", f"/projects/{args.project_id}")
         rid = _request_id("project_create", args.request_id)
-        result = client.request("POST", "/projects", json_body={"request_id": rid, "title": args.title})
+        body = {"request_id": rid, "title": args.title}
+        if args.language: body["language"] = args.language
+        result = client.request("POST", "/projects", json_body=body)
         _remember_operation("project_create", rid, (result.get("operation") or {}).get("operation_id"))
         return result
+    if args.area == "styles":
+        return client.request("GET", "/styles")
     if args.area == "source":
         file_path = getattr(args, "file", None)
         if args.action == "upload":
@@ -608,6 +640,7 @@ def run(args) -> dict:
             "request_id": rid, "content": text,
             "filename": str(file_path.name) if file_path else None,
             "expected_source_revision": args.expected_revision,
+            **_source_options(args),
         })
         _remember_operation(f"source_save:{args.project_id}", rid, (result.get("operation") or {}).get("operation_id"))
         return result
@@ -615,6 +648,7 @@ def run(args) -> dict:
         rid = _request_id(f"analysis:{args.project_id}", args.request_id)
         result = client.request("POST", f"/projects/{args.project_id}/analysis", json_body={
             "request_id": rid, "page_count": args.page_count, "expected_source_revision": args.expected_revision,
+            **({"structure_requirements": args.structure_requirements} if args.structure_requirements else {}),
         })
         _remember_operation(f"analysis:{args.project_id}", rid, (result.get("operation") or {}).get("operation_id"))
         return result
