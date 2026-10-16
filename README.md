@@ -174,6 +174,45 @@ sulaide feedback --list                                  # 查看自己反馈的
 
 登录后 Key 保存在 `~/.sulaide/auth.json`（目录 `0700`，文件 `0600`），工作流命令会自动使用。密码只会交互输入，不接受命令行参数。
 
+### 项目设置（与网页「项目设置」相同的选项）
+
+```bash
+sulaide styles list                                       # 可用母版及 ID
+sulaide projects create --title "Q2 复盘" --language zh
+sulaide source set PROJECT_ID --file deck.md --expected-revision 0 \
+  --target-pages 8 --narrative rigorous --style-id 5 --language zh --title "Q2 增长经营复盘"
+sulaide analysis start PROJECT_ID --expected-revision 1 --structure-requirements "按问题、证据、建议组织"
+```
+
+| 选项 | 参数 | 不传时 |
+|---|---|---|
+| 项目标题 | `projects create --title` / `source set --title` | `新PPT` |
+| 输出语言 | `--language zh\|en` | `zh` |
+| 页数设定（严格按页数，不自动增减） | `source set --target-pages N`（1–50），`analysis start --page-count N` 可单次覆盖 | 现有版式页数 → 底稿页数 → 6 |
+| 母版 | `source set --style-id ID` | 项目默认固定层 |
+| 叙事偏好 | `--narrative rigorous`（严谨架构）\| `fluent`（流利表达） | `rigorous`（与网页一致） |
+| 结构要求 | `analysis start --structure-requirements` | 无 |
+
+> 不兼容变更：Agent API 的 `PUT /projects/{id}/source` 不再接受 `page_count`（改名为 `source_page_count`，表示底稿本身页数；目标页数是 `target_page_count`），并拒绝未知字段。请用 `sulaide update` 升级 CLI。
+
+### 逐页编辑与预览调整
+
+```bash
+sulaide layout show PROJECT_ID                      # 页面列表 + 编辑版本（presentation_version_id / manifest_revision）
+sulaide pages edit PROJECT_ID 2 --title "新标题" --visual-style luxury_brand --title-width 800 \
+  --expected-version VERSION_ID --expected-revision REV   # 版本不一致返回 409
+sulaide pages add|delete|duplicate|move ...         # 新增 / 删除 / 复制 / 上移下移
+sulaide pages split PROJECT_ID 3 --at 120           # 按正文字符位置拆分，AI 重写两页标题
+sulaide pages merge PROJECT_ID 4                    # 第 4 页合并到第 3 页
+sulaide pages reanalyze PROJECT_ID 2 --instruction "突出数据"
+sulaide visual-styles list                          # 视觉风格 ID
+sulaide pages regenerate PROJECT_ID 2 --prompt "更简洁"     # 重新生成本页图片（消耗积分）
+sulaide pages edit-image PROJECT_ID 2 --prompt "主色改成蓝色"  # 按指令改图（消耗积分）
+sulaide pages images PROJECT_ID SLIDE_ID            # 图片历史；restore-image 恢复
+sulaide theme set PROJECT_ID --primary "#1F4E79" --apply-section-template
+sulaide export check PROJECT_ID --version-id V --manifest-hash H   # 导出前质量检查
+```
+
 ### 导出 PPTX（三种模式）
 
 ```bash

@@ -22,14 +22,17 @@ This is the only Sulaide skill. Each step's detailed instructions live in `refer
 | Install, register, log in, API key problems | `references/login.md` | authenticated account (never the key itself) |
 | List existing projects, get a project list, find a project ID to continue | `references/projects.md` | project list or chosen `project_id` |
 | View or download files in the resource library (source drafts, analysis drafts, generated images, exported PPTX/PDF) | `references/resources.md` | resource list, or local file path of a downloaded resource |
-| Start a deck / add or update material | `references/source.md` | `project_id`, `source_revision` |
-| Build or recover the outline | `references/analysis.md` | `operation_id`, outline, page count |
-| Generate pages, inspect page status | `references/preview.md` | `presentation_version_id`, `manifest_hash` |
-| Download a PPTX | `references/export.md` | file path, version, manifest hash |
+| Start a deck / add or update material; project settings (title, language, page count, master template 母版, narrative preference 叙事偏好) | `references/source.md` | `project_id`, `source_revision` |
+| Build or recover the outline; re-analyse; edit, add, delete, move, split, merge or re-analyse single pages; per-page visual style; title width | `references/analysis.md` | `operation_id`, outline, page count |
+| Generate pages, inspect page status; regenerate / edit one page image; restore an old image; theme colours | `references/preview.md` | `presentation_version_id`, `manifest_hash` |
+| Pre-export quality check, download a PPTX | `references/export.md` | file path, version, manifest hash |
 
 For an end-to-end request ("make me a PPT from this"), read and run login (only if `sulaide auth status` fails) → source → analysis → preview → export, reading each reference file when you reach that step.
 
 ## Account queries (read-only)
+
+- 母版 / master templates: `sulaide styles list` (IDs for `source set --style-id`).
+- 视觉风格 / per-page visual styles: `sulaide visual-styles list` (IDs for `pages edit/regenerate --visual-style`).
 
 - 积分 / credits: `sulaide credits` (add `--human` for a one-line summary).
 - 优惠券 / 卡券 / coupons: `sulaide coupons [--status available|not_started|used|expired|voided] [--human]`. Use when the user asks what coupons they have, which are still usable, or when they expire. Redeem codes are not returned and redeeming or applying coupons is not available through the CLI; send the user to the Sulaide web app for that.

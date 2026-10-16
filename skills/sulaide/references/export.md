@@ -2,7 +2,7 @@
 
 Use the shared `sulaide` CLI and the exact frozen `presentation_version_id` and `manifest_hash` from preview.
 
-1. Verify the selected version is the intended version and its page manifest is complete.
+1. Verify the selected version is the intended version and its page manifest is complete. Run the web's pre-export quality check with `sulaide export check PROJECT_ID --version-id VERSION_ID --manifest-hash HASH` and report any issues to the user before exporting.
 2. Start an export with `sulaide export start PROJECT_ID --version-id VERSION_ID --manifest-hash HASH --mode native` (or an explicitly requested editable mode, see the table below).
 3. Preserve the returned operation ID. If the outcome is uncertain, inspect that operation before retrying. For editable modes, `sulaide wait OPERATION_ID` until the run finishes and keep `result.run_id`.
 4. Download with `sulaide export download PROJECT_ID VERSION_ID HASH --output FILE.pptx`, adding `--run-id RUN_ID` **only** for editable modes. The CLI will not overwrite an existing file, refuses error bodies (HTTP error or HTTP 200 with a non-zero `code`), and only writes a real PPTX (ZIP) package.
