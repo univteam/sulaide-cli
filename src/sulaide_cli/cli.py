@@ -378,16 +378,22 @@ NARRATIVE_PREFERENCES = {"rigorous": "rigorous_structure", "fluent": "fluent_exp
 
 
 def _source_options(args) -> dict:
-    """Web upload-panel settings; only explicitly given values are sent (narrative always)."""
+    """Project-settings fields for a source save. Only values the user set are sent.
+
+    ``narrative_preference`` is included only when ``--narrative`` is set, so a
+    content-only save does not force ``rigorous_structure``. Omitting it is meant
+    to leave the saved preference unchanged. If the server still fills a missing
+    field with ``rigorous_structure``, that reset remains a server-side default.
+    """
     if args.target_pages is not None and not 1 <= args.target_pages <= 50:
         raise ValueError("--target-pages 必须在 1–50 之间")
+    narrative = NARRATIVE_PREFERENCES[args.narrative] if args.narrative else None
     options = {
         "project_title": args.title, "language": args.language, "target_page_count": args.target_pages,
         "style_id": args.style_id, "source_page_count": args.source_page_count,
+        "narrative_preference": narrative,
     }
-    body = {key: value for key, value in options.items() if value is not None}
-    body["narrative_preference"] = NARRATIVE_PREFERENCES[args.narrative]
-    return body
+    return {key: value for key, value in options.items() if value is not None}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -419,13 +425,13 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--title", help="项目标题")
         sp.add_argument("--language", choices=("zh", "en"), help="输出语言（默认沿用项目语言，zh）")
         sp.add_argument("--target-pages", type=int, help="页数设定：严格按此页数规划叙事结构（1–50）")
-        sp.add_argument("--narrative", choices=("rigorous", "fluent"), default="rigorous",
-                        help="叙事偏好：rigorous=严谨架构（默认），fluent=流利表达")
+        sp.add_argument("--narrative", choices=("rigorous", "fluent"), default=None,
+                        help="叙事偏好：rigorous=严谨架构，fluent=流利表达；不传则不发送该字段")
         sp.add_argument("--style-id", type=int, help="母版 ID（见 `sulaide styles list`）；不传则用项目默认固定层")
         sp.add_argument("--source-page-count", type=int, help="底稿本身的页数（仅记录，可省略）")
 
     analysis = sub.add_parser("analysis").add_subparsers(dest="action", required=True)
-    start = analysis.add_parser("start"); start.add_argument("project_id", type=int); start.add_argument("--request-id"); start.add_argument("--page-count", type=int); start.add_argument("--expected-revision", type=int)
+    start = analysis.add_parser("start"); start.add_argument("project_id", type=int); start.add_argument("--request-id"); start.add_argument("--page-count", type=int, help="本次分析页数（1–50），覆盖已保存的页数设定；省略则用项目设定"); start.add_argument("--expected-revision", type=int)
     start.add_argument("--structure-requirements", help="结构要求（可选），例如：按问题、证据、建议组织")
     styles = sub.add_parser("styles", help="母版（PPT 模板）").add_subparsers(dest="action", required=True)
     styles.add_parser("list", help="列出可用母版及其 ID")
@@ -465,7 +471,8 @@ def build_parser() -> argparse.ArgumentParser:
     psplit.add_argument("project_id", type=int); psplit.add_argument("page_number", type=int)
     psplit.add_argument("--at", type=int, required=True, help="正文字符偏移，第二页从这里开始"); _versioned(psplit); _structure_wait(psplit)
     prean = pages.add_parser("reanalyze", help="单页重新分析（重写标题、副标题、正文和叙事）")
-    prean.add_argument("project_id", type=int); prean.add_argument("page_number", type=int); prean.add_argument("--instruction"); prean.add_argument("--request-id")
+    prean.add_argument("project_id", type=int); prean.add_argument("page_number", type=int); prean.add_argument("--instruction")
+    _versioned(prean)
     pregen = pages.add_parser("regenerate", help="重新生成本页图片（消耗积分）")
     pregen.add_argument("project_id", type=int); pregen.add_argument("page_number", type=int)
     pregen.add_argument("--prompt"); pregen.add_argument("--visual-style"); pregen.add_argument("--request-id")
@@ -646,7 +653,7 @@ def _topup_summary(result: dict) -> str:
 
 
 def _versioned(parser) -> None:
-    parser.add_argument("--request-id")
+    parser.add_argument("--request-id", help="幂等键，仅用于重试同一条命令；不要在 add 与 duplicate 等不同页面写操作之间复用")
     parser.add_argument("--expected-version", type=int, help="预期的编辑版本 ID（layout show 输出）；省略则用当前版本")
     parser.add_argument("--expected-revision", type=int, help="预期的 manifest_revision；省略则用当前值")
 
@@ -733,8 +740,10 @@ def _pages(client, args) -> dict:
     if a == "move":
         return _write(client, key, "POST", f"{page}/move", {**_version_body(args), "direction": args.direction}, args.request_id)
     if a == "reanalyze":
-        return _write(client, key, "POST", f"{page}/reanalyze",
-                      {"instruction": args.instruction} if args.instruction else {}, args.request_id)
+        body = _version_body(args)
+        if args.instruction:
+            body["instruction"] = args.instruction
+        return _write(client, key, "POST", f"{page}/reanalyze", body, args.request_id)
     if a == "regenerate":
         body = {k: v for k, v in (("prompt", args.prompt), ("visual_style_id", args.visual_style)) if v}
         return _write(client, key, "POST", f"{page}/regenerate", body, args.request_id)
@@ -816,6 +825,8 @@ def run(args) -> dict:
         _remember_operation(f"source_save:{args.project_id}", rid, (result.get("operation") or {}).get("operation_id"))
         return result
     if args.area == "analysis":
+        if args.page_count is not None and not 1 <= args.page_count <= 50:
+            raise ValueError("--page-count 必须在 1–50 之间")
         rid = _request_id(f"analysis:{args.project_id}", args.request_id)
         result = client.request("POST", f"/projects/{args.project_id}/analysis", json_body={
             "request_id": rid, "page_count": args.page_count, "expected_source_revision": args.expected_revision,

@@ -15,7 +15,7 @@ Use the shared `sulaide` CLI. Do not call undocumented HTTP routes or write the 
 | 输出语言 | `--language zh\|en` | project language (`zh`) |
 | 页数设定 | `--target-pages N` (1–50). Planned **strictly**: pages are never added or removed automatically | existing layout → source page count → 6 |
 | 母版 | `--style-id ID` from `sulaide styles list` | no master: the project default fixed layer |
-| 叙事偏好 | `--narrative rigorous` (严谨架构: conclusions, hierarchy, argument order) or `--narrative fluent` (流利表达: reading rhythm, natural narration) | `rigorous` |
+| 叙事偏好 | `--narrative rigorous` (严谨架构: conclusions, hierarchy, argument order) or `--narrative fluent` (流利表达: reading rhythm, natural narration) | omitted: the CLI does not send `narrative_preference` (it no longer puts `rigorous` on every save). If the server still fills a missing field with `rigorous_structure`, a content-only save can still reset a saved fluent preference — that reset is the server default, not a field this CLI sends |
 
 Fixed-layer rule (固定层规则): title, subtitle, brand logo, footer, and page number are controlled by the chosen master and are never drawn into the AI content images.
 
@@ -24,7 +24,7 @@ When to ask the user (ask once, together, before `source set`; do not guess):
 - **Page count**: ask unless the user stated it; it is strict, so a wrong value means re-analysis.
 - **Master template**: run `sulaide styles list`; if the user has masters, ask which one (or none). If the list is empty, say the default fixed layer will be used.
 - **Visual style (视觉风格)**: chosen per page by Sulaide after analysis (default 咨询详细, cover 奢华品牌). Ask only if the user mentions a look (e.g. blueprint, data-heavy, academic); then apply it with `sulaide pages edit P N --visual-style ID` (IDs from `sulaide visual-styles list`) — see `references/analysis.md`.
-- **Narrative preference**: ask only if the purpose is unclear (formal report → rigorous; talk or storytelling → fluent); otherwise use the default and say so.
+- **Narrative preference**: ask only if the purpose is unclear (formal report → rigorous; talk or storytelling → fluent). If the user does not choose, omit `--narrative`. Do not pass `--narrative rigorous` on a later content update just to "keep the default" — that overwrites a saved fluent preference. Say that a brand-new project still starts as rigorous unless they pick fluent.
 
 `--source-page-count` only records how many pages the original document had; it is not the target.
 

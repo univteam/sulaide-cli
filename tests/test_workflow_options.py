@@ -17,12 +17,20 @@ class SourceOptionTests(FakeClientCase):
                           "narrative_preference": "fluent_expression", "style_id": 5, "source_page_count": 12})
         self.assertNotIn("page_count", body)
 
-    def test_source_defaults_only_send_narrative(self):
+    def test_source_omits_unset_options_including_narrative(self):
         self.cli("source", "set", "3", "--text", "x", "--request-id", "s2")
         body = self.body()
-        self.assertEqual(body["narrative_preference"], "rigorous_structure")
-        for key in ("project_title", "language", "target_page_count", "style_id", "source_page_count", "page_count"):
+        for key in ("project_title", "language", "target_page_count", "narrative_preference",
+                    "style_id", "source_page_count", "page_count"):
             self.assertNotIn(key, body)
+
+    def test_narrative_is_sent_only_when_set(self):
+        self.cli("source", "set", "3", "--text", "x", "--narrative", "rigorous")
+        self.assertEqual(self.body()["narrative_preference"], "rigorous_structure")
+        self.cli("source", "upload", "3", __file__, "--narrative", "fluent")
+        self.assertEqual(self.body()["narrative_preference"], "fluent_expression")
+        self.cli("source", "upload", "3", __file__)
+        self.assertNotIn("narrative_preference", self.body())
 
     def test_target_pages_range(self):
         with self.assertRaises(ValueError):
@@ -35,6 +43,15 @@ class SourceOptionTests(FakeClientCase):
         self.assertEqual(self.body()["page_count"], 6)
         self.cli("analysis", "start", "3", "--request-id", "a2")
         self.assertNotIn("structure_requirements", self.body())
+
+    def test_page_count_range(self):
+        for count in (0, 51, -1):
+            with self.assertRaises(ValueError):
+                self.cli("analysis", "start", "3", "--page-count", str(count))
+        self.cli("analysis", "start", "3", "--page-count", "1")
+        self.assertEqual(self.body()["page_count"], 1)
+        self.cli("analysis", "start", "3", "--page-count", "50")
+        self.assertEqual(self.body()["page_count"], 50)
 
     def test_styles_list(self):
         self.responses = {("GET", "/styles"): {"items": [{"id": 5, "name": "Brand"}]}}

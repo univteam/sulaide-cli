@@ -45,7 +45,8 @@ Run stages in order: source → analysis → preview → export. Resume from the
 ## Operating rules
 
 - Every write returns an operation. Keep `request_id` and `operation_id`; after a timeout or lost response, run `sulaide operations show OPERATION_ID` or `sulaide wait OPERATION_ID` instead of submitting a new request.
-- Pass `--expected-revision` / `--expected-version` so concurrent edits fail loudly instead of overwriting.
+- An explicit `--request-id` retries that same write only. Do not reuse one id across different page-mutation commands (`pages add`, `duplicate`, `delete`, `move`, `edit`, `split`, `merge`, `reanalyze`). The server keys new slides by operation type plus operation id, so a repeated request id no longer collides on `slide_id`, but a different body is still HTTP 409 `IDEMPOTENCY_CONFLICT` (exit 3).
+- Pass `--expected-revision` / `--expected-version` (including `pages reanalyze`) so a concurrent edit fails with HTTP 409 (exit 3) instead of overwriting. Layout validation failures are other HTTP 4xx and exit 2.
 - Report failed, partial, or unpaid pages exactly; never claim visual quality from status alone.
 - Never print, log, or hand off an API key or password.
 
@@ -59,7 +60,8 @@ The CLI prints errors as JSON on stderr with `http_status`, `reason`, `retryable
 | HTTP 503 `AGENT_API_DISABLED` | Agent API is turned off on the server | Tell the user; retry later. Not fixable from the client |
 | HTTP 429 `AGENT_RATE_LIMITED` | Per-account rate limit (default 120 reads / 10 writes per minute) | Wait, then retry the same request ID |
 | HTTP 503 `AGENT_RATE_LIMIT_UNAVAILABLE` | Temporary server issue | Retry later with the same request ID |
-| exit 3 / HTTP 409 (`SOURCE_REVISION_CONFLICT`, `PRESENTATION_VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`) | State changed or request ID reused with different input | Re-read the project/version, then decide with the user |
+| exit 2 / HTTP 4xx (400, 422, …) | The request failed validation. For page edits this includes layout rules (last page, section boundaries, widths). These are real HTTP errors, not an envelope `code` on HTTP 200, and they are not version conflicts | Read `reason` / `message` and fix the request |
+| exit 3 / HTTP 409 (`SOURCE_REVISION_CONFLICT`, `PRESENTATION_VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`) | The source revision or presentation version changed, or the same request ID was reused with different input | Re-read the project/version, then decide with the user |
 | Insufficient credits ("积分余额不足") / unpaid pages | Account balance too low | Run `sulaide credits` and report `available`; offer `sulaide topup` (see `references/billing.md`); do not retry in a loop |
 | exit 5 `wait_timeout` | Operation still running | `sulaide wait OPERATION_ID` again |
 | exit 6 `network_error` | Response lost | Reuse the request ID or query the operation |

@@ -188,9 +188,9 @@ sulaide analysis start PROJECT_ID --expected-revision 1 --structure-requirements
 |---|---|---|
 | 项目标题 | `projects create --title` / `source set --title` | `新PPT` |
 | 输出语言 | `--language zh\|en` | `zh` |
-| 页数设定（严格按页数，不自动增减） | `source set --target-pages N`（1–50），`analysis start --page-count N` 可单次覆盖 | 现有版式页数 → 底稿页数 → 6 |
+| 页数设定（严格按页数，不自动增减） | `source set --target-pages N`（1–50），`analysis start --page-count N`（同样 1–50）可单次覆盖 | 现有版式页数 → 底稿页数 → 6 |
 | 母版 | `source set --style-id ID` | 项目默认固定层 |
-| 叙事偏好 | `--narrative rigorous`（严谨架构）\| `fluent`（流利表达） | `rigorous`（与网页一致） |
+| 叙事偏好 | `--narrative rigorous`（严谨架构）\| `fluent`（流利表达） | 不传则不发送该字段（不再默认带上 rigorous）。若服务端仍把缺省写成 `rigorous_structure`，只改正文仍可能被重置 |
 | 结构要求 | `analysis start --structure-requirements` | 无 |
 
 > 不兼容变更：Agent API 的 `PUT /projects/{id}/source` 不再接受 `page_count`（改名为 `source_page_count`，表示底稿本身页数；目标页数是 `target_page_count`），并拒绝未知字段。请用 `sulaide update` 升级 CLI。
@@ -200,11 +200,12 @@ sulaide analysis start PROJECT_ID --expected-revision 1 --structure-requirements
 ```bash
 sulaide layout show PROJECT_ID                      # 页面列表 + 编辑版本（presentation_version_id / manifest_revision）
 sulaide pages edit PROJECT_ID 2 --title "新标题" --visual-style luxury_brand --title-width 800 \
-  --expected-version VERSION_ID --expected-revision REV   # 版本不一致返回 409
+  --expected-version VERSION_ID --expected-revision REV
 sulaide pages add|delete|duplicate|move ...         # 新增 / 删除 / 复制 / 上移下移
 sulaide pages split PROJECT_ID 3 --at 120           # 按正文字符位置拆分，AI 重写两页标题
 sulaide pages merge PROJECT_ID 4                    # 第 4 页合并到第 3 页
-sulaide pages reanalyze PROJECT_ID 2 --instruction "突出数据"
+sulaide pages reanalyze PROJECT_ID 2 --instruction "突出数据" \
+  --expected-version VERSION_ID --expected-revision REV
 sulaide visual-styles list                          # 视觉风格 ID
 sulaide pages regenerate PROJECT_ID 2 --prompt "更简洁"     # 重新生成本页图片（消耗积分）
 sulaide pages edit-image PROJECT_ID 2 --prompt "主色改成蓝色"  # 按指令改图（消耗积分）
@@ -212,6 +213,10 @@ sulaide pages images PROJECT_ID SLIDE_ID            # 图片历史；restore-ima
 sulaide theme set PROJECT_ID --primary "#1F4E79" --apply-section-template
 sulaide export check PROJECT_ID --version-id V --manifest-hash H   # 导出前质量检查
 ```
+
+`--expected-version` / `--expected-revision` 来自 `layout show`（`pages reanalyze` 同样接受这两个参数，并传给重新分析接口）。版本已被别人改过时，服务端返回 HTTP 409 `PRESENTATION_VERSION_CONFLICT`，CLI 退出码 **3**。版式规则不满足（例如删除最后一页、跨章节移动、宽度越界）是真实的 HTTP 4xx（常见 400/422），CLI 经 `ApiError` 退出码 **2**，不是「只有版本不一致才会失败」。
+
+显式 `--request-id` 只用于重试**同一条**写命令。不要在 `pages add` 与 `pages duplicate`（以及 delete、move、edit、reanalyze 等不同动词）之间复用同一个 id。后端已按 `operation_type:operation_id` 生成 `slide_id`，相同 request id 不再因此撞页；但不同请求体仍会触发幂等冲突（HTTP 409，退出码 3）。省略该参数时，CLI 会为每条命令单独生成 id。
 
 ### 导出 PPTX（三种模式）
 

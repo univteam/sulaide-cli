@@ -65,6 +65,18 @@ class LayoutEditingCommandTests(FakeClientCase):
             ("POST", "/projects/3/pages/1/reanalyze")])
         self.assertEqual(self.body(3)["direction"], "up")
         self.assertEqual(self.body(0)["after_page"], 2)
+        self.assertEqual(self.body(-1)["instruction"], "突出数据")
+        self.assertNotIn("expected_presentation_version_id", self.body(-1))
+
+    def test_reanalyze_sends_expected_version(self):
+        self.cli("pages", "reanalyze", "3", "2", "--instruction", "突出数据",
+                 "--expected-version", "10", "--expected-revision", "4")
+        self.assertEqual(self.calls[-1][:2], ("POST", "/projects/3/pages/2/reanalyze"))
+        body = self.body()
+        self.assertEqual({k: body[k] for k in ("instruction", "expected_presentation_version_id",
+                                               "expected_manifest_revision")},
+                         {"instruction": "突出数据", "expected_presentation_version_id": 10,
+                          "expected_manifest_revision": 4})
 
     def test_request_id_is_bound_to_body(self):
         self.cli("pages", "edit", "3", "1", "--title", "A")
