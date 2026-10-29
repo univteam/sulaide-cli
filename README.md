@@ -90,7 +90,7 @@ uv tool install git+https://github.com/univteam/sulaide-cli.git
 sulaide --version
 ```
 
-应输出类似 `sulaide 0.2.0@<提交>`。如果提示找不到命令，先看第 7 步。
+应输出类似 `sulaide 0.3.0@<提交>`。如果提示找不到命令，先看第 7 步。
 
 **4. 把 skill 装到你自己（当前 Agent）**
 
@@ -187,10 +187,10 @@ sulaide analysis start PROJECT_ID --expected-revision 1 --structure-requirements
 | 选项 | 参数 | 不传时 |
 |---|---|---|
 | 项目标题 | `projects create --title` / `source set --title` | `新PPT` |
-| 输出语言 | `--language zh\|en` | `zh` |
-| 页数设定（严格按页数，不自动增减） | `source set --target-pages N`（1–50），`analysis start --page-count N`（同样 1–50）可单次覆盖 | 现有版式页数 → 底稿页数 → 6 |
-| 母版 | `source set --style-id ID` | 项目默认固定层 |
-| 叙事偏好 | `--narrative rigorous`（严谨架构）\| `fluent`（流利表达） | 不传则不发送该字段（不再默认带上 rigorous）。若服务端仍把缺省写成 `rigorous_structure`，只改正文仍可能被重置 |
+| 输出语言 | `--language zh\|en` | 沿用项目语言；新项目 `zh` |
+| 页数设定（严格按页数，不自动增减） | `source set --target-pages N`（1–50），`analysis start --page-count N`（同样 1–50）可单次覆盖 | 沿用已保存值；skill 新建确认时默认 5 页、展示网站的 1–30 范围 |
+| 母版 | `source set --style-id ID`；`--clear-style` 明确清除，两者互斥 | 沿用项目冻结母版；新项目默认固定层 |
+| 叙事偏好 | `--narrative rigorous`（严谨架构）\| `fluent`（流利表达） | 沿用已保存值；新项目严谨架构 |
 | 结构要求 | `analysis start --structure-requirements` | 无 |
 
 > 不兼容变更：Agent API 的 `PUT /projects/{id}/source` 不再接受 `page_count`（改名为 `source_page_count`，表示底稿本身页数；目标页数是 `target_page_count`），并拒绝未知字段。请用 `sulaide update` 升级 CLI。
@@ -219,6 +219,8 @@ sulaide export check PROJECT_ID --version-id V --manifest-hash H   # 导出前�
 显式 `--request-id` 只用于重试**同一条**写命令。不要在 `pages add` 与 `pages duplicate`（以及 delete、move、edit、reanalyze 等不同动词）之间复用同一个 id。后端已按 `operation_type:operation_id` 生成 `slide_id`，相同 request id 不再因此撞页；但不同请求体仍会触发幂等冲突（HTTP 409，退出码 3）。省略该参数时，CLI 会为每条命令单独生成 id。
 
 ### 导出 PPTX（三种模式）
+
+以下是底层 CLI 已有能力。本期 `sulaide` skill 的会话流程只支持普通 PPT，可编辑导出的交互和转换暂不纳入；不会主动提供转换方式或页码选项。
 
 ```bash
 # native（默认）：用生成的页面图片拼成 PPTX，最快；没有 run_id，按版本 + manifest hash 直接下载
@@ -258,8 +260,18 @@ sulaide resources download RESOURCE_VERSION_ID --output FILE   # 下载资源库
 
 只有一个 skill：`skills/sulaide/`。用户只需启用 `sulaide`，它会按需读取 `references/` 下的分步指南：
 
+默认在当前会话分阶段确认：集中选择母版、叙事风格、页数和语言 → 审阅大纲与各页视觉风格 → 查看生成预览并调整 → 导出普通 PPT。已明确的选择会沿用；只有用户明确要求全自动才跳过普通阶段确认。预览确认与导出合并，不再询问导出模式或转换页码。本期暂不实现可编辑导出交互；用户明确提出时先说明范围，不能未经同意替换为普通 PPT。
+
+母版和二进制底稿仍需到网站上传，上传完成后回到同一项目继续。选项来自网站现有能力与实时目录，不会把 CLI 参数逐项变成问卷。
+
+宿主模型负责通用对话、选项解释、阶段确认和结果展示；叙事分析、视觉风格推荐与生图通过 CLI 交给速来得服务执行。不会为消耗宿主套餐额度而把这些生成环节迁到本地，也不会把本地生成的草稿冒充为速来得产物。通用对话使用宿主账户额度，速来得模型和图片调用仍消耗速来得积分。
+
+公开 skill、CLI 文件和返回数据都应视为用户可检查的内容。私有生成提示词、内部方法和评分规则留在服务端，不作为客户端资源下载；接口只应返回用户需要的产品结果和公开状态。不要把内部调试输出、原始模型请求/响应或私有资料加入本仓库、分发包和反馈附件。客户端提示“不展示”不能代替服务端过滤，也不能保证仅凭产物无法推断生成方法。
+
 | 步骤 | 文件 | 内容 |
 | --- | --- | --- |
+| 会话协议 | `references/interaction.md` | 阶段确认、已有选择复用、全自动和中断恢复 |
+| 网站选项 | `references/web-options.md` | 网站名称与 CLI 值、动态目录和上传边界 |
 | 登录 | `references/login.md` | 安装检查、注册/登录、安全保存 API Key、`sulaide auth status` 验证 |
 | 项目 | `references/projects.md` | `sulaide projects list` 获取项目列表，`projects show` 查看详情，复用或新建项目 |
 | 资源库 | `references/resources.md` | `sulaide resources list` 查看项目资源库，`resources download` 下载资源文件 |
@@ -269,6 +281,10 @@ sulaide resources download RESOURCE_VERSION_ID --output FILE   # 下载资源库
 | 4. 导出 | `references/export.md` | 基于冻结的演示版本校验并下载 PPTX |
 
 `SKILL.md` 还包含前置条件、路由规则和常见错误（401、503 `AGENT_API_DISABLED`、限流、冲突、积分不足等）。`references/*.md` 没有 frontmatter，Agent 不会把它们列为独立 skill。
+
+`sulaide auth status` 中的 `source_settings_patch` 和 `review_identity_guards` 表明服务端支持省略设置保留、审阅版本保护。新 skill 遇到旧服务会说明升级或网站继续路径，不会静默去掉保护。普通旧 CLI 调用仍可使用。生成时可传 `--expected-source-revision`、`--expected-editing-version`、`--expected-manifest-revision`（原 `--expected-version` 仍表示 active 版本）；改图命令可传 `--expected-version`、`--expected-revision`、`--expected-slide-id`。过期前提会返回冲突，应回读并重新审阅。
+
+真实宿主对话测试与人工检查方法见 [conversation-evaluation.md](docs/conversation-evaluation.md)。
 
 ### 一步安装到编码 Agent
 

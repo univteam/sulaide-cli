@@ -381,9 +381,8 @@ def _source_options(args) -> dict:
     """Project-settings fields for a source save. Only values the user set are sent.
 
     ``narrative_preference`` is included only when ``--narrative`` is set, so a
-    content-only save does not force ``rigorous_structure``. Omitting it is meant
-    to leave the saved preference unchanged. If the server still fills a missing
-    field with ``rigorous_structure``, that reset remains a server-side default.
+    content-only save leaves the saved preference unchanged on servers with
+    ``source_settings_patch`` support. Clearing a template is explicit.
     """
     if args.target_pages is not None and not 1 <= args.target_pages <= 50:
         raise ValueError("--target-pages 必须在 1–50 之间")
@@ -393,7 +392,10 @@ def _source_options(args) -> dict:
         "style_id": args.style_id, "source_page_count": args.source_page_count,
         "narrative_preference": narrative,
     }
-    return {key: value for key, value in options.items() if value is not None}
+    result = {key: value for key, value in options.items() if value is not None}
+    if args.clear_style:
+        result["style_id"] = None
+    return result
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -427,7 +429,9 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--target-pages", type=int, help="页数设定：严格按此页数规划叙事结构（1–50）")
         sp.add_argument("--narrative", choices=("rigorous", "fluent"), default=None,
                         help="叙事偏好：rigorous=严谨架构，fluent=流利表达；不传则不发送该字段")
-        sp.add_argument("--style-id", type=int, help="母版 ID（见 `sulaide styles list`）；不传则用项目默认固定层")
+        master = sp.add_mutually_exclusive_group()
+        master.add_argument("--style-id", type=int, help="母版 ID（见 `sulaide styles list`）；省略则沿用项目母版")
+        master.add_argument("--clear-style", action="store_true", help="明确清除项目母版，使用默认固定层")
         sp.add_argument("--source-page-count", type=int, help="底稿本身的页数（仅记录，可省略）")
 
     analysis = sub.add_parser("analysis").add_subparsers(dest="action", required=True)
@@ -438,6 +442,9 @@ def build_parser() -> argparse.ArgumentParser:
     preview = sub.add_parser("preview").add_subparsers(dest="action", required=True)
     pshow = preview.add_parser("show"); pshow.add_argument("project_id", type=int); pshow.add_argument("--version-id", type=int)
     generate = preview.add_parser("generate"); generate.add_argument("project_id", type=int); generate.add_argument("--request-id"); generate.add_argument("--expected-version", type=int)
+    generate.add_argument("--expected-source-revision", type=int, help="审阅时的 source_revision")
+    generate.add_argument("--expected-editing-version", type=int, help="审阅时的 editing_version_id")
+    generate.add_argument("--expected-manifest-revision", type=int, help="审阅时的 manifest_revision")
 
     vstyles = sub.add_parser("visual-styles", help="单页视觉风格（visual_style_id）").add_subparsers(dest="action", required=True)
     vstyles.add_parser("list", help="列出视觉风格预设")
@@ -475,10 +482,10 @@ def build_parser() -> argparse.ArgumentParser:
     _versioned(prean)
     pregen = pages.add_parser("regenerate", help="重新生成本页图片（消耗积分）")
     pregen.add_argument("project_id", type=int); pregen.add_argument("page_number", type=int)
-    pregen.add_argument("--prompt"); pregen.add_argument("--visual-style"); pregen.add_argument("--request-id")
+    pregen.add_argument("--prompt"); pregen.add_argument("--visual-style"); _image_versioned(pregen)
     pimg = pages.add_parser("edit-image", help="按指令修改本页图片（消耗积分）")
     pimg.add_argument("project_id", type=int); pimg.add_argument("page_number", type=int)
-    pimg.add_argument("--prompt", required=True); pimg.add_argument("--reference-image", type=Path); pimg.add_argument("--request-id")
+    pimg.add_argument("--prompt", required=True); pimg.add_argument("--reference-image", type=Path); _image_versioned(pimg)
     phist = pages.add_parser("images", help="查看本页图片历史版本"); phist.add_argument("project_id", type=int); phist.add_argument("slide_id")
     prest = pages.add_parser("restore-image", help="恢复本页的历史图片")
     prest.add_argument("project_id", type=int); prest.add_argument("slide_id")
@@ -663,6 +670,11 @@ def _structure_wait(parser) -> None:
     parser.add_argument("--timeout", type=float, default=180)
 
 
+def _image_versioned(parser) -> None:
+    _versioned(parser)
+    parser.add_argument("--expected-slide-id", help="审阅时该页的 slide_id，防止页面重排后误改")
+
+
 def _body_key(body: dict) -> str:
     import hashlib
     return hashlib.sha256(json.dumps(body, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
@@ -745,10 +757,14 @@ def _pages(client, args) -> dict:
             body["instruction"] = args.instruction
         return _write(client, key, "POST", f"{page}/reanalyze", body, args.request_id)
     if a == "regenerate":
-        body = {k: v for k, v in (("prompt", args.prompt), ("visual_style_id", args.visual_style)) if v}
+        body = {**_version_body(args), **{k: v for k, v in (
+            ("prompt", args.prompt), ("visual_style_id", args.visual_style),
+            ("expected_slide_id", args.expected_slide_id)) if v is not None}}
         return _write(client, key, "POST", f"{page}/regenerate", body, args.request_id)
     if a == "edit-image":
-        body = {"prompt": args.prompt}
+        body = {**_version_body(args), "prompt": args.prompt}
+        if args.expected_slide_id is not None:
+            body["expected_slide_id"] = args.expected_slide_id
         if args.reference_image:
             import base64, mimetypes
             mime = mimetypes.guess_type(args.reference_image.name)[0] or "image/png"
@@ -839,6 +855,9 @@ def run(args) -> dict:
         rid = _request_id(f"preview:{args.project_id}", args.request_id)
         result = client.request("POST", f"/projects/{args.project_id}/preview/continue", json_body={
             "request_id": rid, "expected_presentation_version_id": args.expected_version,
+            **{k: v for k, v in (("expected_source_revision", args.expected_source_revision),
+                                 ("expected_editing_version_id", args.expected_editing_version),
+                                 ("expected_manifest_revision", args.expected_manifest_revision)) if v is not None},
         })
         _remember_operation(f"preview:{args.project_id}", rid, (result.get("operation") or {}).get("operation_id"))
         return result

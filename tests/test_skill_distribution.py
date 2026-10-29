@@ -8,7 +8,12 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REFERENCES = ("login", "projects", "resources", "source", "analysis", "preview", "export")
+REFERENCES = ("interaction", "web-options", "login", "projects", "resources", "source", "analysis", "preview", "export")
+# New shipped files require explicit review: the client package must not silently
+# absorb internal prompt recipes, debug dumps or evaluation artifacts.
+PUBLIC_SKILL_FILES = {"sulaide/SKILL.md"} | {
+    f"sulaide/references/{ref}.md" for ref in (*REFERENCES, "billing", "feedback")
+}
 
 
 class SkillDistributionTests(unittest.TestCase):
@@ -20,9 +25,12 @@ class SkillDistributionTests(unittest.TestCase):
             self.assertEqual(len(archives), 1)
             with zipfile.ZipFile(archives[0]) as bundle:
                 names = set(bundle.namelist())
+                self.assertEqual(names, PUBLIC_SKILL_FILES)
                 self.assertIn("sulaide/SKILL.md", names)
                 for ref in REFERENCES:
                     self.assertIn(f"sulaide/references/{ref}.md", names)
+                    self.assertEqual(bundle.read(f"sulaide/references/{ref}.md"),
+                                     (ROOT / f"skills/sulaide/references/{ref}.md").read_bytes())
 
     def test_sulaide_is_the_only_frontmatter_skill(self):
         skill_files = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "skills").rglob("SKILL.md"))

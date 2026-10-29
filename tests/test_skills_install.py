@@ -61,6 +61,22 @@ class SkillsInstallTests(unittest.TestCase):
         self.assertFalse((self.home / ".codex/skills/sulaide-preview").exists())
         self.assertFalse((self.home / ".cursor/skills").exists())
 
+    def test_update_refreshes_conversation_references_without_touching_foreign_skill(self):
+        skills.install(["codex"])
+        installed = self.home / ".codex/skills/sulaide"
+        (installed / skills.MARKER).write_text("0.2.0\n")
+        (installed / "SKILL.md").write_text("old workflow")
+        foreign = self.home / ".claude/skills/sulaide"
+        foreign.mkdir(parents=True)
+        (foreign / "SKILL.md").write_text("user skill")
+        skills.update()
+        bundled = skills.bundled_skills_root() / "sulaide"
+        for ref in ("interaction", "web-options", "analysis", "preview", "export"):
+            relative = f"references/{ref}.md"
+            self.assertEqual((installed / relative).read_bytes(), (bundled / relative).read_bytes())
+        self.assertEqual((installed / skills.MARKER).read_text().strip(), __version__)
+        self.assertEqual((foreign / "SKILL.md").read_text(), "user skill")
+
     def test_no_agent_detected_requires_explicit_choice(self):
         with self.assertRaisesRegex(ValueError, "--agent"):
             skills.resolve_agents(None, False)
