@@ -32,6 +32,27 @@ class SourceOptionTests(FakeClientCase):
         self.cli("source", "upload", "3", __file__)
         self.assertNotIn("narrative_preference", self.body())
 
+    def test_clear_style_is_explicit_and_exclusive(self):
+        self.cli("source", "set", "3", "--text", "x", "--clear-style")
+        self.assertIsNone(self.body()["style_id"])
+        with self.assertRaises(SystemExit):
+            self.cli("source", "set", "3", "--text", "x", "--clear-style", "--style-id", "5")
+        self.cli("source", "upload", "3", __file__, "--clear-style")
+        self.assertIsNone(self.body()["style_id"])
+
+    def test_preview_passes_reviewed_identity(self):
+        self.cli("preview", "generate", "3", "--expected-version", "9",
+                 "--expected-source-revision", "4", "--expected-editing-version", "10",
+                 "--expected-manifest-revision", "2")
+        self.assertEqual({k: v for k, v in self.body().items() if k != "request_id"}, {
+            "expected_presentation_version_id": 9, "expected_source_revision": 4,
+            "expected_editing_version_id": 10, "expected_manifest_revision": 2})
+
+    def test_legacy_preview_omits_new_guards(self):
+        self.cli("preview", "generate", "3")
+        self.assertEqual({k: v for k, v in self.body().items() if k != "request_id"},
+                         {"expected_presentation_version_id": None})
+
     def test_target_pages_range(self):
         with self.assertRaises(ValueError):
             self.cli("source", "set", "3", "--text", "x", "--target-pages", "51")

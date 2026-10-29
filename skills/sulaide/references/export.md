@@ -1,23 +1,20 @@
-# Sulaide PPTX export
+# Deliver ordinary PPTX
 
-Use the shared `sulaide` CLI and the exact frozen `presentation_version_id` and `manifest_hash` from preview.
+Read `interaction.md`. Export the presentation version the user actually reviewed or explicitly requested; keep its `presentation_version_id` and `manifest_hash`. Do not substitute a newer active version.
 
-1. Verify the selected version is the intended version and its page manifest is complete. Run the web's pre-export quality check with `sulaide export check PROJECT_ID --version-id VERSION_ID --manifest-hash HASH` and report any issues to the user before exporting.
-2. Start an export with `sulaide export start PROJECT_ID --version-id VERSION_ID --manifest-hash HASH --mode native` (or an explicitly requested editable mode, see the table below).
-3. Preserve the returned operation ID. If the outcome is uncertain, inspect that operation before retrying. For editable modes, `sulaide wait OPERATION_ID` until the run finishes and keep `result.run_id`.
-4. Download with `sulaide export download PROJECT_ID VERSION_ID HASH --output FILE.pptx`, adding `--run-id RUN_ID` **only** for editable modes. The CLI will not overwrite an existing file, refuses error bodies (HTTP error or HTTP 200 with a non-zero `code`), and only writes a real PPTX (ZIP) package.
-5. Report the file path, byte size, frozen version, and manifest hash. Opening or inspecting the deck is a separate validation step; do not claim visual fidelity without checking it.
+## Ordinary PPT in this release
 
-## Export modes
+Use **普通 PPT (`native`)**, preserving the current page appearance. Combine export confirmation with the preview's “continue or adjust” question. After that offer, the user's “继续” is sufficient; do not ask again for a mode or page range. A direct ordinary-PPT export request enters this stage immediately. An explicit full-auto request may export ordinary PPT without another checkpoint.
 
-| Mode | What you get | `export start` returns | Download |
-| --- | --- | --- | --- |
-| `native` (default) | PPTX built from the generated page images; fastest | `result.run_id` is `null`, `result.download.requires_run_id` is `false` | `export download PROJECT_ID VERSION_ID HASH --output FILE.pptx` (no `--run-id`); the file is keyed by version + manifest hash |
-| `text_editable` | Page images with editable text boxes on top | `result.run_id` | `sulaide wait OPERATION_ID`, then `export download ... --run-id RUN_ID` |
-| `full_editable` | Fully rebuilt editable shapes and text (slowest) | `result.run_id` | `sulaide wait OPERATION_ID`, then `export download ... --run-id RUN_ID` |
+Editable export is deferred. Do not start `text_editable` or `full_editable`, resolve conversion page ranges, or promise editable text/objects. If the user explicitly requests editable output, explain that the current skill supports ordinary PPT only and wait for them to accept that alternative. This also applies in full-auto mode: do not silently substitute native output. The underlying CLI/server may expose more modes; that does not expand this release's conversation scope.
 
-Editable modes take `--page-numbers 1,2,3` (comma separated); leave it empty only if the server accepts all pages. Never pass an operation ID as `--run-id`: it returns "可编辑导出任务不存在".
+## Export the reviewed version
 
-Export runs against Sulaide's existing project and credit rules. Never substitute a newer active version for the requested frozen version.
+1. Read `sulaide preview show PROJECT_ID --version-id VERSION_ID` and ensure its identity matches the selected version/hash. Run `sulaide export check PROJECT_ID --version-id VERSION_ID --manifest-hash HASH`.
+2. Explain any missing/older images or quality warnings and their effects. Website warnings do not automatically block export; let the user continue with the disclosed result or return to adjustments. Hard service errors, such as an invalid version or denied access, must be resolved. Never claim all pages are complete because export is allowed.
+3. After export is authorized, run `sulaide export start PROJECT_ID --version-id VERSION_ID --manifest-hash HASH --mode native`. Do not pass conversion page numbers.
+4. Preserve the operation ID. Native output has `result.run_id: null` and `result.download.requires_run_id: false`. After a timeout or lost response, recover the accepted operation rather than submitting a replacement.
+5. Download with `sulaide export download PROJECT_ID VERSION_ID HASH --output FILE.pptx`, without `--run-id`. The CLI refuses to overwrite an existing file and checks that it received a real PPTX package.
+6. Return a usable local file link, size and any page-level limitations. Keep the frozen version/hash for later recovery; there is no need to make the user interpret those fields. Successful download and visual fidelity are separate facts; ordinary output does not promise that page-image text or objects are editable.
 
-If the user wants a file that was already exported earlier instead of a fresh export, find it in the resource library: `sulaide resources list PROJECT_ID --resource-type export_pptx` then `sulaide resources download RESOURCE_VERSION_ID --output FILE.pptx` (see `references/resources.md`).
+If the user wants an already exported file, find it with `sulaide resources list PROJECT_ID --resource-type export_pptx` and download its resource version through `resources.md`. This may retrieve an existing editable file without starting conversion. Do not generate a new export unnecessarily.

@@ -1,33 +1,48 @@
-# Sulaide narrative analysis
+# Outline and slide-style review
 
-Use only the shared `sulaide` CLI. Confirm the project and source revision first.
+Read `interaction.md`. Start analysis after the settings checkpoint is answered, or when an explicit reanalysis request has resolved its target and settings. Analysis completion opens the **combined outline and visual-style checkpoint**; it does not automatically start images.
 
-1. Run `sulaide projects show PROJECT_ID` and record `source_revision` and `settings.target_page_count`.
-2. Start work with `sulaide analysis start PROJECT_ID --expected-revision REVISION [--page-count N] [--structure-requirements "..."]`.
-   - `--page-count` overrides the saved target page count (页数设定) for this run and must be **1–50** (the CLI rejects other values before the request; the server returns HTTP 422 for the same range). Omit it to use the saved value. The outline uses exactly that many pages.
-   - `--structure-requirements` (结构要求, optional, ≤4000 chars) states how chapters should be grouped or ordered, e.g. "将产品体验和客户服务合为一章，按问题、证据、建议组织". Pass the user's own wording; do not invent requirements.
-   - Re-running analysis with a new page count or requirements is the web "重新分析" action and replaces the outline.
-3. Save `operation_id` and `run_id`. Poll with `sulaide wait OPERATION_ID --timeout 180`, or resume with `sulaide operations show OPERATION_ID` after interruption.
-4. Report the exact run status and resulting project outline. Failed or uncertain upstream outcomes must be reported for review; do not create a replacement request automatically.
+Run analysis and style recommendation on Sulaide through the CLI. Present and explain the returned outline and public style choices; do not fetch private prompts or generate a substitute analysis with the host model. If the service fails, recover or report that failure instead of presenting a local draft as its result. User-requested content edits are still supported below.
 
-Ask the user for page count or structure requirements only when they are material and cannot be inferred from the request.
+## Analyse and show the result
 
-## Editing pages after analysis (web 叙事分析工作台)
+1. Read `sulaide projects show PROJECT_ID`; retain the confirmed `source_revision`, active presentation ID and target page count.
+2. Run `sulaide analysis start PROJECT_ID --expected-revision REVISION [--page-count N] [--structure-requirements "..."]`.
+3. Keep `operation_id` and `run_id`. Use `sulaide wait OPERATION_ID --timeout 180`; after interruption inspect `sulaide operations show OPERATION_ID`. Resume the original operation on timeout instead of creating another paid request.
+4. On completion, read `sulaide projects show PROJECT_ID`, `sulaide layout show PROJECT_ID` and `sulaide visual-styles list`. Analysis can publish a new active version: capture the resulting source revision and active presentation ID from the project, and `presentation_version_id` / `manifest_revision` from layout. Do not carry the pre-analysis active ID into generation.
+5. Present sections, each page's title and concise content points. In that same message, group current visual styles by page/section and distinguish recommendations from user overrides. Use real catalog names, not a hard-coded default style.
+6. Ask whether to generate with this outline/style selection or what to change, then wait. The reply can confirm both together. If a visual style was explicitly requested earlier, apply it to the applicable pages before this review and show it as the user's choice; do not ask the same preference again.
 
-Read the pages and the editing version first: `sulaide layout show PROJECT_ID` → `pages[]`, `presentation_version_id`, `manifest_revision`. Pass those back as `--expected-version` / `--expected-revision` (including on `pages reanalyze`) so a concurrent web edit fails with HTTP 409 `PRESENTATION_VERSION_CONFLICT` (CLI exit 3) instead of being overwritten. Layout-rule failures — deleting the last page, moving across a section, a width outside the canvas, and similar — are real HTTP 4xx responses (often 400 or 422) and the CLI exits 2 via `ApiError`. They are not version conflicts. Omit the version flags only for a single, immediate edit. Every edit returns the new version; re-read `layout show` before the next one.
+The website's reanalysis page count is **1–50**, defaulting to current pages; `--page-count` overrides the saved target for this run. Changing it replaces the outline, so explain the impact before reanalysis. The website “结构要求” input allows 2000 characters; the existing CLI/API accepts up to 4000 for compatibility. Collect this field only when the user wants structural guidance, preserve their wording, and never invent chapter requirements just to fill it.
 
-Do not reuse an explicit `--request-id` across different page-mutation verbs (`add`, `duplicate`, `delete`, `move`, `edit`, `split`, `merge`, `reanalyze`, …). Reuse it only to retry that same command. The server now seeds `slide_id` from `operation_type:operation_id`, so the same request id no longer collides between add and duplicate, but a different body is still an idempotency conflict (HTTP 409, exit 3). Omit `--request-id` and the CLI mints a distinct id per command.
+## Style selection without a page-by-page questionnaire
 
-| Action | Command | Notes |
-| --- | --- | --- |
-| Edit title / subtitle / body / narrative | `sulaide pages edit P N --title ... --subtitle ... --content ... (or --content-file F) --narrative ...` | Marks the page image stale |
-| Per-page 视觉风格 | `sulaide pages edit P N --visual-style ID` | IDs from `sulaide visual-styles list` |
-| Title / subtitle width | `sulaide pages edit P N --title-width 800 --subtitle-width 700` | px on a 1600-wide canvas, clamped to [240, canvas − x] |
-| Add / delete / duplicate / move | `pages add P [--after N] [--title] [--content]`, `pages delete P N`, `pages duplicate P N`, `pages move P N up\|down` | Last page and section pages that still have body pages cannot be deleted; structured decks can only move body pages within one section |
-| Split a page | `sulaide pages split P N --at OFFSET` | OFFSET = character index in the body where page 2 starts; AI rewrites both titles (and narration), then the CLI applies it |
-| Merge into previous page | `sulaide pages merge P N` | Page N merges into N−1 (same section); AI rewrites the title |
-| Single-page re-analysis | `sulaide pages reanalyze P N [--instruction "..."] [--expected-version V] [--expected-revision R]` | Rewrites title, subtitle, body and narrative of that page only. Sends `expected_presentation_version_id` / `expected_manifest_revision` when those flags are set; a stale version is HTTP 409 |
+Use returned page recommendation/override and template-page information. Do not infer template status from page position. Frozen-template section/end pages keep their template; their lack of an AI-style selector is not an error.
 
-Split/merge wait for the title run (`--timeout`, default 180 s); with `--no-wait` they return `run_id`, and re-running the same command later resumes and applies it. Title runs and re-analysis use model calls billed to the user's account. Ask the user before deleting pages or rewriting content they did not ask to change.
+Label an automatic choice as the service's recommendation. Explain styles using their public catalog descriptions; do not request or invent routing scores, evidence tags or internal decision reasons.
 
-Return project ID, source revision, operation ID, run ID, status, page count, and questions the outline still needs answered. Sulaide performs model calls and charges the user's Sulaide credit account.
+Offer live available styles for a requested change, with descriptions where useful. Users may choose one style for a page, a group or all applicable AI pages. Translate that into existing page edits, not a new “whole-deck style” command. Preserve explicit user overrides when recommendations change. If the requested style is unavailable or its name is ambiguous, resolve only that choice.
+
+After an edit, read the project and layout again, display the changed page/content or style group and keep the generation checkpoint pending. Every new outline review captures source, active, editing and manifest identities together before asking the user. “Change page 3” does not mean “generate the deck now”. Distinguish content changes from visual-style changes when the wording could mean either.
+
+## Editing the outline
+
+Before each write, read the editing identity with `sulaide layout show PROJECT_ID` and match the affected page to the user's reviewed content. Pass `--expected-version V --expected-revision R` on versioned edits, including reanalysis; do not omit them for an “immediate” edit. A new current revision does not renew an old confirmation.
+
+| Requested action | Command | Relevant limit |
+|---|---|---|
+| Change title/subtitle/body/core narrative | `sulaide pages edit P N --title ... --subtitle ... --content ... --narrative ...` | Send only changed fields; `--content-file F` is available for longer body text. |
+| Change visual style | `sulaide pages edit P N --visual-style ID` | Use a live catalog ID and an applicable AI page. |
+| Adjust title/subtitle width | `sulaide pages edit P N --title-width 800 --subtitle-width 700` | Advanced only; dimensions follow the website canvas constraints. |
+| Add/delete/duplicate/move | `pages add P --after N`, `pages delete P N`, `pages duplicate P N`, `pages move P N up\|down` | Last page and sections with body pages cannot be deleted; structured body pages move within their section. |
+| Split a page | `sulaide pages split P N --at OFFSET` | Resolve the content split with the user; derive the character offset internally. |
+| Merge into previous | `sulaide pages merge P N` | Same section; page N merges into N−1. |
+| Reanalyse one page | `sulaide pages reanalyze P N --instruction "..."` | Rewrites only the requested page; include the version guards above. |
+
+Do not expose these technical controls as the default conversation. Chapter movement and undo of a split/merge remain website-only; provide a clear handoff and read the changed layout when the user returns.
+
+Split/merge generate titles through a billed background run. They normally wait; `--no-wait` returns a run to resume. Preserve the original request ID when resuming the same action. For different edits, use different request IDs; never reuse one ID across different verbs or changed bodies. Re-read the returned layout identity after every successful edit. Partial batch failure means report completed and remaining edits, recover uncertain requests, then continue only the remaining work.
+
+HTTP 409 means conflict: re-read, show the relevant differences and return to review. Other HTTP 4xx layout-rule failures are validation errors, not permission to retry blindly. Report failed/uncertain upstream outcomes without automatically replacing the request.
+
+When the user confirms generation, hand the exact source revision, editing version and manifest revision to `preview.md`, together with the current choices and operation references. Sulaide performs analysis and charges the user's account; a finished analysis is not a completed presentation.

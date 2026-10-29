@@ -39,6 +39,16 @@ class PreviewEditingCommandTests(FakeClientCase):
         self.assertEqual({k: self.body()[k] for k in ("source_version_id", "expected_presentation_version_id", "expected_manifest_hash")},
                          {"source_version_id": 8, "expected_presentation_version_id": 10, "expected_manifest_hash": "h"})
 
+    def test_image_writes_pass_reviewed_page_identity(self):
+        for action in ("regenerate", "edit-image"):
+            self.cli("pages", action, "3", "2", "--prompt", "蓝色",
+                     "--expected-version", "10", "--expected-revision", "4",
+                     "--expected-slide-id", "slide-2")
+            self.assertEqual({k: self.body()[k] for k in (
+                "expected_presentation_version_id", "expected_manifest_revision", "expected_slide_id")},
+                {"expected_presentation_version_id": 10, "expected_manifest_revision": 4,
+                 "expected_slide_id": "slide-2"})
+
 
 class LayoutEditingCommandTests(FakeClientCase):
     def test_edit_fields(self):

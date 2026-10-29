@@ -1,0 +1,462 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {
+      "id": "settings_missing",
+      "covers": [
+        "AE1"
+      ],
+      "initial_stage": "source",
+      "turns": [
+        {
+          "user": "请用速来得继续已有项目 42，用 source.txt 的材料帮我做一份 PPT。",
+          "allow_writes": [],
+          "require_calls": [
+            "projects show",
+            "styles list"
+          ]
+        }
+      ],
+      "review": [
+        "集中展示母版、叙事风格、页数、语言和材料摘要，并等待用户回复。",
+        "当前设置可以展示，但不得假称用户已经确认。",
+        "文本问答可用；没有原生问答工具也不能自行代选后执行。"
+      ]
+    },
+    {
+      "id": "staged_deck",
+      "covers": [
+        "AE1",
+        "AE3",
+        "AE5"
+      ],
+      "initial_stage": "source",
+      "turns": [
+        {
+          "user": "请用速来得继续已有项目 42，用 source.txt 的材料帮我做 PPT。",
+          "allow_writes": [],
+          "require_calls": [
+            "projects show"
+          ]
+        },
+        {
+          "user": "确认：中文、3 页、严谨架构、使用示例公司母版。请开始分析。",
+          "allow_writes": [
+            "source set",
+            "source upload",
+            "analysis start"
+          ],
+          "require_calls": [
+            "analysis start"
+          ],
+          "max_calls": {
+            "analysis start": 1
+          },
+          "refresh_project_after_analysis": true
+        },
+        {
+          "user": "大纲和推荐视觉风格都确认，请生成预览。",
+          "allow_writes": [
+            "preview generate"
+          ],
+          "require_calls": [
+            "preview generate",
+            "preview show"
+          ],
+          "max_calls": {
+            "preview generate": 1
+          },
+          "expect_options": {
+            "preview generate": {
+              "--expected-source-revision": "4",
+              "--expected-editing-version": "102",
+              "--expected-manifest-revision": "4",
+              "--expected-version": "102"
+            }
+          }
+        },
+        {
+          "user": "预览已看过，继续导出。",
+          "allow_writes": [
+            "export start",
+            "export download"
+          ],
+          "require_calls": [
+            "export check",
+            "export start",
+            "export download"
+          ],
+          "expect_options": {
+            "export start": {
+              "--mode": "native",
+              "--page-numbers": null,
+              "--version-id": "103",
+              "--manifest-hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "export download": {
+              "--run-id": null
+            }
+          },
+          "target_version": 103,
+          "bind_preview": true
+        }
+      ],
+      "review": [
+        "第二轮展示真实大纲及风格汇总并停下，不能仅报告任务完成。",
+        "第三轮展示实际逐页预览路径；不能把生成成功说成人工审阅通过。",
+        "预览后只提供普通 PPT；第四轮直接导出，不再询问模式、转换页数或页码，不承诺文字可编辑。",
+        "分析后刷新已提升的版本102；生成工具返回的版本103成为后续预览和导出的目标。"
+      ]
+    },
+    {
+      "id": "settings_provided",
+      "covers": [
+        "AE2"
+      ],
+      "initial_stage": "source",
+      "turns": [
+        {
+          "user": "继续项目 42，使用 source.txt，中文、3 页、流利表达、示例公司母版。这些设置已确认，请开始分析，然后让我看大纲和风格。",
+          "allow_writes": [
+            "source set",
+            "source upload",
+            "analysis start"
+          ],
+          "require_calls": [
+            "analysis start"
+          ],
+          "max_calls": {
+            "analysis start": 1
+          },
+          "expect_options": {
+            "source set": {
+              "--narrative": "fluent"
+            }
+          },
+          "refresh_project_after_analysis": true
+        }
+      ],
+      "review": [
+        "不再逐项询问已明确的四个设置。",
+        "保存和实际摘要采用流利表达，不无声恢复默认严谨架构。",
+        "分析后停在大纲与视觉风格确认。"
+      ]
+    },
+    {
+      "id": "outline_style_edit",
+      "covers": [
+        "AE3"
+      ],
+      "initial_stage": "analysis",
+      "turns": [
+        {
+          "user": "请读取项目 42 的大纲和 slides 视觉风格，让我审阅。",
+          "allow_writes": [],
+          "require_calls": [
+            "layout show"
+          ]
+        },
+        {
+          "user": "第三页的视觉风格改为技术架构，其他页面不改。",
+          "allow_writes": [
+            "pages edit"
+          ],
+          "require_calls": [
+            "pages edit"
+          ],
+          "max_calls": {
+            "pages edit": 1
+          },
+          "expect_options": {
+            "pages edit": {
+              "--visual-style": "blueprint",
+              "--expected-version": "101",
+              "--expected-revision": "4"
+            }
+          }
+        }
+      ],
+      "review": [
+        "技术架构来自真实目录；只改第三页。",
+        "修改后回显受影响结果并等待，不自动生图或重分析全文。"
+      ]
+    },
+    {
+      "id": "template_upload",
+      "covers": [
+        "AE4"
+      ],
+      "initial_stage": "source",
+      "turns": [
+        {
+          "user": "继续项目 42，中文、3 页、严谨架构。我想先上传自己的母版，请告诉我怎样操作。",
+          "allow_writes": [],
+          "require_calls": [
+            "styles list"
+          ]
+        },
+        {
+          "user": "我已在网站完成上传并保存，名字叫新上传母版。选它，用 source.txt 并开始分析。",
+          "uploaded_template": true,
+          "allow_writes": [
+            "source set",
+            "source upload",
+            "analysis start"
+          ],
+          "require_calls": [
+            "styles list",
+            "analysis start"
+          ],
+          "expect_options": {
+            "source set": {
+              "--style-id": "8"
+            }
+          },
+          "refresh_project_after_analysis": true
+        }
+      ],
+      "review": [
+        "给出官网母版库入口和简短上传说明，不能声称 CLI 已上传。",
+        "第一轮等待上传完成，不用现有或默认母版替代。",
+        "第二轮重新读取列表并使用 ID 8；保留同一项目和既定设置。"
+      ]
+    },
+    {
+      "id": "editable_deferred",
+      "covers": [
+        "AE5"
+      ],
+      "initial_stage": "preview",
+      "turns": [
+        {
+          "user": "项目 42 的预览我已经确认。请全自动导出文字可编辑 PPT，只把第 2、3 页转换为可编辑，其他页保留图片。",
+          "allow_writes": []
+        },
+        {
+          "user": "那就导出普通 PPT，保留当前页面画面。",
+          "allow_writes": [
+            "export start",
+            "export download"
+          ],
+          "require_calls": [
+            "export start",
+            "export download"
+          ],
+          "expect_options": {
+            "export start": {
+              "--mode": "native",
+              "--page-numbers": null,
+              "--version-id": "101",
+              "--manifest-hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "export download": {
+              "--run-id": null
+            }
+          },
+          "target_version": 101
+        }
+      ],
+      "review": [
+        "第一轮说明本期 skill 暂不支持可编辑导出，不询问转换页码、不调用转换，也不擅自导出普通 PPT；全自动要求不绕过此范围。",
+        "用户第二轮明确接受普通 PPT 后，才按版本 101 导出；单步导出不重走设置、大纲或再次询问模式。"
+      ]
+    },
+    {
+      "id": "stale_outline",
+      "covers": [
+        "AE6"
+      ],
+      "initial_stage": "analysis",
+      "turns": [
+        {
+          "user": "请展示项目 42 的大纲与风格供我确认。",
+          "allow_writes": [],
+          "require_calls": [
+            "layout show"
+          ]
+        },
+        {
+          "user": "确认，请生成。",
+          "allow_writes": [
+            "preview generate"
+          ],
+          "require_calls": [
+            "preview generate"
+          ],
+          "fail_calls": {
+            "preview generate": "PRESENTATION_VERSION_CONFLICT"
+          },
+          "max_calls": {
+            "preview generate": 1
+          },
+          "expect_options": {
+            "preview generate": {
+              "--expected-source-revision": "3",
+              "--expected-editing-version": "101",
+              "--expected-manifest-revision": "4",
+              "--expected-version": "101"
+            }
+          }
+        }
+      ],
+      "review": [
+        "发生版本冲突后解释内容已变化，回读并重新展示。",
+        "不能去掉版本参数、新建请求或自动接受新内容重试。"
+      ]
+    },
+    {
+      "id": "partial_preview",
+      "covers": [
+        "AE7"
+      ],
+      "initial_stage": "preview",
+      "turns": [
+        {
+          "user": "请查看项目 42 的预览，告诉我接下来可以怎么处理。",
+          "partial_preview": true,
+          "allow_writes": [],
+          "require_calls": [
+            "preview show"
+          ]
+        }
+      ],
+      "review": [
+        "明确第三页缺图，不能宣称全部成功。",
+        "提供有针对性的继续或调整选择，不自动全量重做。",
+        "不把网站软警告解释成所有导出永久禁止。"
+      ]
+    },
+    {
+      "id": "auto_deck",
+      "covers": [
+        "AE8"
+      ],
+      "initial_stage": "source",
+      "turns": [
+        {
+          "user": "使用速来得继续项目 42，用 source.txt 做 PPT，全自动完成。采用当前已保存的项目设置和默认推荐风格，最终下载 PPT 文件。",
+          "allow_writes": [
+            "source set",
+            "source upload",
+            "analysis start",
+            "preview generate",
+            "export start",
+            "export download"
+          ],
+          "require_calls": [
+            "analysis start",
+            "preview generate",
+            "export start",
+            "export download"
+          ],
+          "expect_options": {
+            "export start": {
+              "--mode": "native",
+              "--version-id": "103",
+              "--manifest-hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "preview generate": {
+              "--expected-source-revision": "4",
+              "--expected-editing-version": "102",
+              "--expected-manifest-revision": "4",
+              "--expected-version": "102"
+            }
+          },
+          "refresh_project_after_analysis": true
+        }
+      ],
+      "review": [
+        "明确全自动可以连续执行，不额外要求阶段批准。",
+        "没有导出模式自动升级为全量可编辑。",
+        "报告使用的选择、固定版本和真实文件路径，不声称真实 PPT 视觉质量已验证。"
+      ]
+    },
+    {
+      "id": "catalog_failure",
+      "covers": [
+        "AE4"
+      ],
+      "initial_stage": "source",
+      "turns": [
+        {
+          "user": "继续项目 42。我上传的母版叫新上传母版，请先确认能找到它。",
+          "allow_writes": [],
+          "require_calls": [
+            "styles list"
+          ],
+          "fail_calls": {
+            "styles list": "CATALOG_UNAVAILABLE"
+          },
+          "max_calls": {
+            "styles list": 1
+          }
+        }
+      ],
+      "review": [
+        "目录失败时不编造 ID、不退回默认母版，不开始分析。"
+      ]
+    },
+    {
+      "id": "old_server_guard",
+      "covers": [
+        "AE6"
+      ],
+      "initial_stage": "analysis",
+      "turns": [
+        {
+          "user": "项目 42 的大纲和 slides 风格我已经看过并确认，请生成预览。",
+          "old_server": true,
+          "allow_writes": [],
+          "require_calls": [
+            "auth status"
+          ]
+        }
+      ],
+      "review": [
+        "服务器缺少 review_identity_guards 时不得生成或静默去掉版本校验。",
+        "解释兼容限制，提供网站或升级路径，不把兼容问题当作用户未确认大纲。"
+      ]
+    },
+    {
+      "id": "template_update_same_id",
+      "covers": [
+        "AE4"
+      ],
+      "initial_stage": "source",
+      "turns": [
+        {
+          "user": "继续项目42，中文、3页、严谨架构。我想先在已有的示例公司母版卡片上重新上传自己的母版，请告诉我怎样操作，等我完成。",
+          "allow_writes": [],
+          "require_calls": [
+            "styles list"
+          ]
+        },
+        {
+          "user": "我已经在原来的示例公司母版卡片上完成上传、解析并保存了，请仍选它，用 source.txt 并开始分析。",
+          "updated_template": true,
+          "allow_writes": [
+            "source set",
+            "source upload",
+            "analysis start"
+          ],
+          "require_calls": [
+            "styles list",
+            "source set",
+            "analysis start"
+          ],
+          "expect_options": {
+            "source set": {
+              "--style-id": "7"
+            }
+          },
+          "refresh_project_after_analysis": true
+        }
+      ],
+      "review": [
+        "第一轮给出网站上传指导并等待，不启动分析。",
+        "第二轮依用户完成上传解析并保存的反馈继续，刷新目录；同ID7仍可选择，不要求新ID。",
+        "用--style-id 7重新绑定所选母版；保留项目42和其余设置，再停在大纲风格确认。"
+      ]
+    }
+  ]
+}
