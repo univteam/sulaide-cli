@@ -51,6 +51,25 @@ class PreviewEditingCommandTests(FakeClientCase):
 
 
 class LayoutEditingCommandTests(FakeClientCase):
+    def test_visual_goal_preserves_combined_user_wording_and_review_guards(self):
+        goal = "极简、少量文字，用模块和连接线说明关系；保留三项关键数据"
+        self.cli("pages", "edit", "3", "2", "--visual-goal", goal,
+                 "--expected-version", "10", "--expected-revision", "4")
+        self.assertEqual(self.calls[-1][:2], ("PATCH", "/projects/3/pages/2"))
+        body = self.body()
+        self.assertEqual(body["visual_goal"], goal)
+        self.assertEqual(body["expected_presentation_version_id"], 10)
+        self.assertEqual(body["expected_manifest_revision"], 4)
+        self.assertNotIn("visual_style_id", body)
+        self.assertNotIn("content", body)
+
+    def test_visual_goal_is_omitted_unless_supplied_and_empty_string_clears_it(self):
+        self.cli("pages", "edit", "3", "2", "--title", "保留目标")
+        self.assertNotIn("visual_goal", self.body())
+        self.cli("pages", "edit", "3", "2", "--visual-goal", "")
+        self.assertIn("visual_goal", self.body())
+        self.assertEqual(self.body()["visual_goal"], "")
+
     def test_edit_fields(self):
         self.cli("pages", "edit", "3", "1", "--title", "新", "--visual-style", "luxury_brand", "--title-width", "800",
                  "--expected-version", "10", "--expected-revision", "3")

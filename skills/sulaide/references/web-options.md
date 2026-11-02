@@ -8,14 +8,14 @@ Use the website's choices below, not an invented questionnaire. Fixed options we
 | 叙事偏好 | **严谨架构**：更强调结论、层级和论证顺序。 **流利表达**：更强调阅读节奏和自然叙述。 | New-project suggestion: 严谨架构. Do not choose based only on a guessed audience or purpose. | `source.md` |
 | 页数设定 | Exact target page count, including the presentation's structural pages. | New-project suggestion: 5; website source settings allow 1–30. Reanalysis allows 1–50 and starts from current pages. | `source.md`, `analysis.md` |
 | 输出语言 | 中文 or 英文. This is the requested output language, not necessarily the source language. | New-project suggestion: 中文; preserve an explicit English request or saved English setting. | `source.md` |
-| 内容大纲 | Review section/page titles and content points; request content changes or reanalysis. | Show all page titles with concise points before generation. Expand complete page text only as needed. | `analysis.md` |
-| slides 视觉风格 | The live `sulaide visual-styles list` choices; present recommendations and user overrides by group. | Use actual page recommendations/current choices. Do not hard-code a style name or invent a “formal”, “humorous” or “automatic” style ID. | `analysis.md`, `preview.md` |
+| 内容大纲 | A structure overview, then each page’s actual points, data, relationships and intended takeaway. | Review one page at a time; a title list is navigation, not content approval. | `analysis.md` |
+| 视觉呈现目标与风格 | Combine familiar goals such as 极简、少字、多图片、图形表达、突出连接关系. Save the user’s goal; explain the service’s recommended style through its public description. | Requires `visual_presentation_goals`; service matching, live catalog and explicit page overrides remain authoritative. These goals are free-text instructions, not new website style enums. | `analysis.md`, `preview.md` |
 | 预览调整 | Continue generation; adjust a page's image/layout; edit with an instruction; restore an image; change theme where supported. | Keep the shown presentation version. Offer local changes without opening every advanced control. | `preview.md` |
 | 导出 | **普通 PPT**：保留当前页面画面。 | The only export mode in this skill release; combine export confirmation with preview acceptance. | `export.md` |
 
 Editable export is deferred from this skill release even though the website/CLI may expose it. Do not offer conversion modes or page ranges. If the user explicitly requests editable output, explain the limit and wait for their choice of ordinary PPT; do not treat that request as permission to substitute native output.
 
-“演讲稿风格” in this workflow maps to the existing narrative preference, not a separate script-generation stage. Visual style is selected separately during outline review. Section/end pages rendered from a frozen template have no AI visual-style selector.
+“演讲稿风格” in this workflow maps to the existing narrative preference, not a separate script-generation stage. Visual goals and style are reviewed per page after analysis; the service maps saved goals to available styles. Section/end pages rendered from a frozen template have no AI visual-style selector.
 
 The website's reanalysis “结构要求” field allows 2000 characters. Present that limit in the guided flow; the CLI/API's existing 4000-character compatibility limit is not a new website option. Likewise, the CLI accepts 1–50 target pages, but the website's initial source settings expose 1–30. Explain the relevant stage when a request exceeds its range; do not silently truncate it or first create a smaller deck without consent.
 

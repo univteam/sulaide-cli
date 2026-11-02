@@ -457,11 +457,12 @@ def build_parser() -> argparse.ArgumentParser:
     layout = sub.add_parser("layout", help="查看叙事分析页面列表").add_subparsers(dest="action", required=True)
     lshow = layout.add_parser("show"); lshow.add_argument("project_id", type=int)
     pages = sub.add_parser("pages", help="逐页编辑：标题/正文/视觉风格/拆分/合并/重生成图片等").add_subparsers(dest="action", required=True)
-    pedit = pages.add_parser("edit", help="修改本页标题、副标题、正文、讲稿、视觉风格或标题宽度")
+    pedit = pages.add_parser("edit", help="修改本页内容、视觉呈现目标、风格或标题宽度")
     pedit.add_argument("project_id", type=int); pedit.add_argument("page_number", type=int)
     pedit.add_argument("--title"); pedit.add_argument("--subtitle"); pedit.add_argument("--content")
     pedit.add_argument("--content-file", type=Path); pedit.add_argument("--narrative")
     pedit.add_argument("--visual-style", help="visual_style_id，见 `sulaide visual-styles list`")
+    pedit.add_argument("--visual-goal", help="本页视觉呈现目标（最多 2000 字符）；空字符串清除，省略则保留")
     pedit.add_argument("--title-width", type=float, help="标题区域宽度（px，画布 1600 宽，最小 240）")
     pedit.add_argument("--subtitle-width", type=float, help="副标题区域宽度（px）")
     _versioned(pedit)
@@ -743,9 +744,10 @@ def _pages(client, args) -> dict:
         content = args.content_file.read_text(encoding="utf-8") if args.content_file else args.content
         fields = {k: v for k, v in (("title", args.title), ("subtitle", args.subtitle), ("content", content),
                                     ("narrative", args.narrative), ("visual_style_id", args.visual_style),
+                                    ("visual_goal", args.visual_goal),
                                     ("title_width", args.title_width), ("subtitle_width", args.subtitle_width))
                   if v is not None}
-        if not fields: raise ValueError("没有要修改的字段（--title/--subtitle/--content/--narrative/--visual-style/--title-width/--subtitle-width）")
+        if not fields: raise ValueError("没有要修改的字段（--title/--subtitle/--content/--narrative/--visual-goal/--visual-style/--title-width/--subtitle-width）")
         return _write(client, key, "PATCH", page, {**_version_body(args), **fields}, args.request_id)
     if a in ("delete", "duplicate"):
         return _write(client, key, "POST", f"{page}/{a}", _version_body(args), args.request_id)

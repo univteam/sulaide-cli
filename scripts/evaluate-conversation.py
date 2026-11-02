@@ -65,6 +65,22 @@ def option(argv, key, default=None):
     return default
 
 
+def positionals(argv):
+    """Accept argparse's option ordering when checking scoped page writes."""
+    result = []
+    iterator = iter(argv)
+    for arg in iterator:
+        if arg == "--":
+            result.extend(iterator)
+            break
+        if arg.startswith("--"):
+            if arg not in {"--pretty", "--human", "--no-wait", "--apply-section-template", "--clear-style"} and "=" not in arg:
+                next(iterator, None)
+        else:
+            result.append(arg)
+    return result
+
+
 def validate_turn(expected, trace):
     """Check observable calls against oracle grants for this actual user turn."""
     errors = []
@@ -79,7 +95,8 @@ def validate_turn(expected, trace):
     allowed = set(expected.get("allow_writes", []))
     accepted_version = expected.get("target_version")
     preview_bound = expected.get("bind_preview", False)
-    for call in trace.get("calls", []):
+    calls = trace.get("calls", [])
+    for index, call in enumerate(calls):
         if call.get("error") == "CLI_USAGE_ERROR":
             continue  # Real argparse rejected this command before any fixture operation.
         name = command_name(call["argv"])
@@ -103,6 +120,17 @@ def validate_turn(expected, trace):
         for key, value in expected.get("expect_options", {}).get(name, {}).items():
             if option(call["argv"], key) != value:
                 errors.append(f"{name}: expected {key}={value}")
+        allowed_pages = expected.get("allowed_page_numbers", {}).get(name)
+        positional = positionals(call["argv"])
+        if allowed_pages is not None and positional[3:4] not in [[str(page)] for page in allowed_pages]:
+            errors.append(f"{name}: page is outside this turn's confirmed scope")
+        if (expected.get("require_goal_readback") and name == "pages edit"
+                and option(call["argv"], "--visual-goal") is not None and not call.get("error")):
+            project_id = positional[2]
+            if not any(command_name(later["argv"]) == "layout show" and not later.get("error")
+                       and positionals(later["argv"])[2:3] == [project_id]
+                       for later in calls[index + 1:]):
+                errors.append("page goal saved without reading the service recommendation afterward")
     for name in expected.get("require_calls", []):
         if name not in names:
             errors.append(f"required call missing: {name}")
@@ -224,8 +252,8 @@ def pages(state, output):
         "title": title, "subtitle": "示例内容", "content": "用户留存需要改善，建议分阶段实施。",
         "narrative": "先给结论，再说明证据。", "layout_role": "cover" if i == 1 else "content",
         "page_kind": "cover" if i == 1 else "content", "section_id": None,
-        "visual_style_id": "consulting", "is_template_page": False,
-        "visual_style_recommendation": {"style_id": "consulting", "decision_source": "system_default"},
+        "visual_goal": None, "visual_style_id": "consulting", "visual_style_source": "auto", "is_template_page": False,
+        "visual_style_recommendation": {"style_id": "consulting"},
         "content_image_stale": False,
         "image_state": "published" if state["stage"] == "preview" else "missing",
         "preview_url": str(Path(output) / f"workspace/page-{i}.svg") if state["stage"] == "preview" else None,
@@ -265,12 +293,14 @@ def fake_call(output, argv):
             "retryable": False, "message": "目录暂不可用。" if error == "CATALOG_UNAVAILABLE" else "测试版本已变化，请读取当前内容。"}, 3
     elif name == "auth status":
         response = {"api_version": "v1", "authenticated_as": "fixture-account", "file_upload": False,
-            "review_identity_guards": True, "source_settings_patch": True,
+            "review_identity_guards": True, "source_settings_patch": True, "visual_presentation_goals": True,
             "supported_exports": ["native", "text_editable", "full_editable"],
             "source_options": ["language", "target_page_count", "narrative_preference", "project_title", "style_id"],
             "styles": True, "visual_styles": True, "operations_resume": True}
         if config.get("old_server"):
             response.pop("review_identity_guards")
+        if config.get("old_goal_server"):
+            response.pop("visual_presentation_goals")
     elif name == "credits":
         response = {"available": 1000, "balance": 1000}
     elif name == "styles list":
@@ -297,14 +327,31 @@ def fake_call(output, argv):
             "pages": pages(state, output)}
     elif name == "preview show":
         response = {"project_id": 42, "presentation_version_id": state["version"], "manifest_hash": MANIFEST_HASH,
-            "status": "published" if state["stage"] == "preview" else "not_started",
+            "status": "active" if state["stage"] == "preview" else "building_candidate",
+            "generation_state": "completed" if state["stage"] == "preview" else "not_started",
             "total_page_count": 3, "published_page_count": 3 if state["stage"] == "preview" else 0,
+            "failed_page_count": 0, "generating_page_count": 0,
+            "missing_page_count": 0 if state["stage"] == "preview" else 3, "stale_page_count": 0,
+            "can_continue": state["stage"] != "preview", "provider_outcome_unknown": False,
+            "latest_run": {"run_id": "run-fixture", "status": "completed", "generation_id": 20,
+                           "operation_id": "op-fixture"} if state["stage"] == "preview" else None,
             "pages": pages(state, output)}
         if config.get("partial_preview"):
             response["status"], response["published_page_count"] = "partial_candidate", 2
+            response.update(generation_state="partial_failed", failed_page_count=1, can_continue=True)
             response["pages"][2].update(image_state="missing", preview_url=None, error="示例页面生成失败")
+        if config.get("failed_preview"):
+            response.update(status="building_candidate", generation_state="failed", manifest_hash=None,
+                            published_page_count=0, failed_page_count=3, can_continue=True)
+            response["latest_run"]["status"] = "failed"
+            for page in response["pages"]:
+                page.update(image_state="failed", preview_url=None, error="图片服务连接失败，请联系支持人员恢复后再继续",
+                            error_detail={"reason": "IMAGE_SERVICE_UNREACHABLE", "message": "图片服务连接失败，请联系支持人员恢复后再继续",
+                                          "retryable": True, "next_action": "retry_generation", "run_id": "run-fixture",
+                                          "operation_id": "op-fixture", "generation_id": 20,
+                                          "slide_id": page["slide_id"], "page_number": page["page_number"]})
     elif name in ("wait", "operations show"):
-        response = {**operation, "project_id": 42, "run": {"run_id": "run-fixture", "status": "completed"},
+        response = {**operation, "project_id": 42, "run": {"run_id": "run-fixture", "status": "failed" if config.get("failed_preview") else "completed"},
             "result": {"run_id": "run-fixture", "presentation_version_id": state["version"],
                        "generation_id": 20, "manifest_hash": MANIFEST_HASH}}
     elif name == "export check":
@@ -350,11 +397,21 @@ def fake_call(output, argv):
     elif name in ("pages edit", "pages regenerate", "pages edit-image", "theme set"):
         state["manifest_revision"] += 1
         if name == "pages edit":
-            positional = [arg for arg in argv if arg not in ("--pretty", "--human")]
+            positional = positionals(argv)
             overrides = state.setdefault("page_overrides", {}).setdefault(positional[3], {})
             for flag, key in (("--visual-style", "visual_style_id"), ("--title", "title"), ("--content", "content")):
                 if option(argv, flag) is not None:
                     overrides[key] = option(argv, flag)
+            if option(argv, "--visual-style") is not None:
+                overrides["visual_style_source"] = "user"
+            if option(argv, "--visual-goal") is not None:
+                overrides["visual_goal"] = option(argv, "--visual-goal") or None
+                # The fixture returns a predeclared server result; it does not
+                # implement or disclose the product's matching rules.
+                recommended = config.get("goal_recommendation_style", "consulting")
+                overrides["visual_style_recommendation"] = {"style_id": recommended}
+                if overrides.get("visual_style_source", "auto") != "user":
+                    overrides["visual_style_id"] = recommended
         response = {"project_id": 42, "operation": operation, "presentation_version_id": state["version"],
                     "manifest_revision": state["manifest_revision"], "manifest_hash": MANIFEST_HASH}
     elif name == "export start":

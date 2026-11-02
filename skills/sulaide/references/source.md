@@ -8,7 +8,7 @@ Read `interaction.md` and `web-options.md` first. This stage ends with saved set
 2. Run `sulaide styles list`. Carry forward choices the user already stated. Show a compact material/title summary and collect only missing settings together: master, narrative preference, pages and language.
 3. Offer an existing master by its real name, uploading a master, or the default fixed layer. An empty list does not remove the upload choice; a failed list does not authorize choosing no master.
 4. Mark new-project defaults as suggestions: **5 pages, 中文, 严谨架构, default fixed layer**. Present 严谨架构 and 流利表达 with their website explanations. Do not infer narrative preference from “formal report” or infer output language from the source alone.
-5. Wait for the settings/analysis decision. Already supplied settings need only appear in the summary; do not ask them again one by one. Record any requested visual style for the later combined outline/style review instead of opening another questionnaire here.
+5. Wait for the settings/analysis decision. Already supplied settings need only appear in the summary; do not ask them again one by one. Record any requested visual style for the later per-page content/goal/style review instead of opening another questionnaire here.
 
 ## Save the confirmed choices
 
