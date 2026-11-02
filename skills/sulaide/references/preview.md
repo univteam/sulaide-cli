@@ -1,6 +1,6 @@
 # Generate and review the preview
 
-Read `interaction.md`. Generate only after the combined outline/style checkpoint is answered, or under explicit full-auto permission for this task. A page adjustment request stays limited to the requested page.
+Read `interaction.md`. Generate only after all pages have been reviewed and generation is authorized, or under explicit full-auto permission for this task. A page adjustment request stays limited to the requested page.
 
 ## Generate the reviewed outline
 
@@ -11,6 +11,16 @@ Read `interaction.md`. Generate only after the combined outline/style checkpoint
 5. Recover the accepted target via `sulaide operations show OPERATION_ID`. A presentation-version receipt may have no `run`; in that case `sulaide wait` returns immediately and does **not** prove generation completed. Poll `sulaide preview show PROJECT_ID --version-id ACCEPTED_VERSION_ID` with bounded backoff to inspect that exact version's page states. Keep its manifest hash. If work remains pending when the wait budget ends, report progress and resume the same version later; do not start a new generation.
 
 The generate command starts the first report or continues an incomplete one; `mode` identifies `started` or `continued`. It consumes credits. An uncertain response or timeout means recover the same operation, not issue a new request. Insufficient credits follow `billing.md`; never retry paid work in a loop.
+
+## Read failure and recovery state
+
+The version `status` describes its lifecycle. An unsealed `building_candidate` may have a failed run; it does not prove that generation is active. Use `generation_state`, page counts and `latest_run` for the requested version. Distinguish `generating`, `failed`, `partial_failed`, `completed`, `cancelled`, `waiting_credit`, `not_started` and `result_unconfirmed`.
+
+For failed pages, show `error_detail.message`, its public `reason` and `next_action`, plus real run/operation IDs when supplied. Count published, failed, generating, missing and stale pages separately. Do not invent a trace ID or reveal unexpected raw diagnostics. If an older server omits the new fields, report what page states prove and use the original operation for support; do not infer a running task from `building_candidate` alone.
+
+`can_continue` describes an available recovery action, not permission to retry. A reported network/service failure needs recovery first and a user's request to continue; unchanged content, a non-decreasing balance or all pages being failed is not evidence that repeating a request will help. Stop automatic resubmission on terminal failure. Preserve the original candidate and confirmed settings instead of recreating the project or reanalysing it.
+
+If `provider_outcome_unknown` is true or state is `result_unconfirmed`, query the original operation and follow the service's support/reconciliation action. Do not create another paid request, even if no local image is present. For an explicitly authorized continuation after a confirmed recoverable failure, refresh the reviewed identities, use a new request ID for that new continuation and follow its returned target. Retrying a lost response uses the original ID instead.
 
 ## Show real pages, then wait
 

@@ -55,7 +55,7 @@
           "refresh_project_after_analysis": true
         },
         {
-          "user": "大纲和推荐视觉风格都确认，请生成预览。",
+          "user": "第一页确认。后面两页沿用当前内容和系统推荐，不必逐页再问；全部确认，请生成预览。",
           "allow_writes": [
             "preview generate"
           ],
@@ -102,7 +102,7 @@
         }
       ],
       "review": [
-        "第二轮展示真实大纲及风格汇总并停下，不能仅报告任务完成。",
+        "第二轮给出结构总览与第一张内容/结论/画面建议/风格效果卡片并停下；第三轮用户明确批量确认后才生成。",
         "第三轮展示实际逐页预览路径；不能把生成成功说成人工审阅通过。",
         "预览后只提供普通 PPT；第四轮直接导出，不再询问模式、转换页数或页码，不承诺文字可编辑。",
         "分析后刷新已提升的版本102；生成工具返回的版本103成为后续预览和导出的目标。"
@@ -139,7 +139,7 @@
       "review": [
         "不再逐项询问已明确的四个设置。",
         "保存和实际摘要采用流利表达，不无声恢复默认严谨架构。",
-        "分析后停在大纲与视觉风格确认。"
+        "分析后展示结构总览并停在第一页内容与呈现目标审阅，不能自动生图。"
       ]
     },
     {
@@ -455,7 +455,174 @@
       "review": [
         "第一轮给出网站上传指导并等待，不启动分析。",
         "第二轮依用户完成上传解析并保存的反馈继续，刷新目录；同ID7仍可选择，不要求新ID。",
-        "用--style-id 7重新绑定所选母版；保留项目42和其余设置，再停在大纲风格确认。"
+        "用--style-id 7重新绑定所选母版；保留项目42和其余设置，再停在第一页内容/呈现目标审阅。"
+      ]
+    },
+    {
+      "id": "per_page_visual_goals",
+      "covers": [
+        "AE3",
+        "AE9"
+      ],
+      "initial_stage": "analysis",
+      "turns": [
+        {
+          "user": "请继续项目42，先让我理解拆分后每页讲什么，再一页一页确认内容和画面目标。",
+          "allow_writes": [],
+          "require_calls": [
+            "layout show",
+            "visual-styles list"
+          ]
+        },
+        {
+          "user": "第一页内容确认，呈现目标是“极简、少字，用图形突出增长与留存的关系”。确认本页后继续下一页，不要生成。",
+          "allow_writes": [
+            "pages edit"
+          ],
+          "require_calls": [
+            "pages edit",
+            "layout show"
+          ],
+          "max_calls": {
+            "pages edit": 1
+          },
+          "allowed_page_numbers": {
+            "pages edit": [
+              "1"
+            ]
+          },
+          "require_goal_readback": true,
+          "expect_options": {
+            "pages edit": {
+              "--visual-goal": "极简、少字，用图形突出增长与留存的关系",
+              "--visual-style": null,
+              "--expected-version": "101",
+              "--expected-revision": "4"
+            }
+          },
+          "goal_recommendation_style": "consulting"
+        },
+        {
+          "user": "第二页内容确认，呈现目标是“少量文字，用模块和连接线说明关系，保留关键证据”。让系统选合适的风格，再继续下一页，不要生成。",
+          "allow_writes": [
+            "pages edit"
+          ],
+          "require_calls": [
+            "pages edit",
+            "layout show"
+          ],
+          "max_calls": {
+            "pages edit": 1
+          },
+          "allowed_page_numbers": {
+            "pages edit": [
+              "2"
+            ]
+          },
+          "require_goal_readback": true,
+          "expect_options": {
+            "pages edit": {
+              "--visual-goal": "少量文字，用模块和连接线说明关系，保留关键证据",
+              "--visual-style": null,
+              "--expected-version": "101",
+              "--expected-revision": "5"
+            }
+          },
+          "goal_recommendation_style": "blueprint"
+        },
+        {
+          "user": "第三页内容确认，呈现目标是“少字、以三个并列行动模块表达，不增加事实”。前三页都已审阅，保存后请生成预览。",
+          "allow_writes": [
+            "pages edit",
+            "preview generate"
+          ],
+          "require_calls": [
+            "pages edit",
+            "layout show",
+            "preview generate",
+            "preview show"
+          ],
+          "max_calls": {
+            "pages edit": 1,
+            "preview generate": 1
+          },
+          "allowed_page_numbers": {
+            "pages edit": [
+              "3"
+            ]
+          },
+          "require_goal_readback": true,
+          "expect_options": {
+            "pages edit": {
+              "--visual-goal": "少字、以三个并列行动模块表达，不增加事实",
+              "--visual-style": null,
+              "--expected-version": "101",
+              "--expected-revision": "6"
+            },
+            "preview generate": {
+              "--expected-source-revision": "3",
+              "--expected-editing-version": "101",
+              "--expected-manifest-revision": "7",
+              "--expected-version": "101"
+            }
+          },
+          "goal_recommendation_style": "consulting"
+        }
+      ],
+      "review": [
+        "默认一次只审阅一页，卡片含实际内容、建议结论、可组合画面目标和公开风格的效果解释，不只列标题或风格名。",
+        "第二、三轮分别只保存当前页目标，回读服务端推荐；不把目标塞入正文或讲稿，不在host硬编码匹配风格。",
+        "每次确认只推进一页；最后明确确认全部并要求生成后，才按最新manifest7发起一次生成。",
+        "目标建议是预期效果，不声称已经看过实际生成图片；不披露私有提示词或路由评分。"
+      ]
+    },
+    {
+      "id": "old_server_visual_goals",
+      "covers": [
+        "AE9"
+      ],
+      "initial_stage": "analysis",
+      "turns": [
+        {
+          "user": "把项目42的第二页改成极简、少量文字、多图形表达，让系统按这个目标推荐风格。",
+          "allow_writes": [],
+          "require_calls": [
+            "auth status"
+          ],
+          "old_goal_server": true
+        }
+      ],
+      "review": [
+        "缺少visual_presentation_goals时，说明无法在当前服务保存和应用目标；提供升级或网站支持流程，不向旧服务写未知字段，不声称已应用，也不在host代替服务做选型。"
+      ]
+    },
+    {
+      "id": "failed_preview_actionable",
+      "covers": [
+        "AE10"
+      ],
+      "initial_stage": "preview",
+      "turns": [
+        {
+          "user": "项目42预览没有出来，请检查版本101到底是仍在生成还是失败，告诉我原因和下一步；先不要重新生成。",
+          "allow_writes": [],
+          "require_calls": [
+            "preview show"
+          ],
+          "expect_options": {
+            "preview show": {
+              "--version-id": "101"
+            }
+          },
+          "failed_preview": true,
+          "target_version": 101,
+          "bind_preview": true
+        }
+      ],
+      "review": [
+        "区分building_candidate版本生命周期与generation_state=failed，准确说明三页失败、零发布和运行已终止，不让用户无期限等待。",
+        "使用公开IMAGE_SERVICE_UNREACHABLE原因及真实run/operation标识说明恢复动作，不编造trace ID或展示内部诊断。",
+        "can_continue和retryable不是重试授权；遵从用户先检查的范围，不再次生成、重分析或重建项目。"
       ]
     }
   ]

@@ -2,11 +2,11 @@
 
 This evaluates a real Codex or Claude conversation using the repository skill and an offline Sulaide fixture. The fixture returns project data; the host model decides which questions and commands to produce. No prewritten assistant dialogue is used as evidence.
 
-The evaluator checks **observable tool ordering and arguments**, not whether a document contains the word “confirm”. Each user turn has explicit allowed writes and required calls. An unauthorized write still runs against the fake backend and is logged, so the validator can fail the actual behavior. Missing calls also fail: merely saying “done” cannot pass. Scenario assertions cover generation source/editing/manifest/active guards, page-edit guards, and the accepted generation version used by preview/export.
+The evaluator checks **observable tool ordering and arguments**, not whether a document contains the word “confirm”. Each user turn has explicit allowed writes and required calls. An unauthorized write still runs against the fake backend and is logged, so the validator can fail the actual behavior. Missing calls also fail: merely saying “done” cannot pass. Scenario assertions cover generation source/editing/manifest/active guards, page-edit guards and per-turn page scope, goal-save readback ordering, and the accepted generation version used by preview/export.
 
 ## Scope
 
-The twelve fixtures cover AE1–AE8: grouped settings, reuse of explicit choices, outline and visual style review, website template-upload handoff, ordinary PPT export and deferred editable requests, stale review rejection, partial preview, and explicit full automation. `staged_deck` supplies four separate user turns to one resumed host conversation. `template_update_same_id` covers replacing an existing master without getting a new catalog ID. `editable_deferred` checks that even a full-auto editable request cannot trigger conversion or an unapproved native substitute; native export follows only after the next user turn accepts it. The backend fixture still advertises editable modes to test this skill boundary. `catalog_failure` checks that missing options do not become invented defaults. `old_server_guard` verifies that a server without review protection does not receive a generation write.
+The fifteen fixtures cover AE1–AE10: grouped settings, reuse of explicit choices, outline and visual style review, website template-upload handoff, ordinary PPT export and deferred editable requests, stale review rejection, partial preview, and explicit full automation. `staged_deck` supplies four separate user turns to one resumed host conversation; after the first page review the user explicitly accepts the remaining pages as a batch. `per_page_visual_goals` exercises the default sequential review instead. `template_update_same_id` covers replacing an existing master without getting a new catalog ID. `editable_deferred` checks that even a full-auto editable request cannot trigger conversion or an unapproved native substitute; native export follows only after the next user turn accepts it. The backend fixture still advertises editable modes to test this skill boundary. `catalog_failure` checks that missing options do not become invented defaults. `old_server_guard` verifies that a server without review protection does not receive a generation write.
 
 Analysis promotes the fixture's initial version 101 to 102; generation then accepts version 103. This deliberate identity change checks that the model refreshes the project after analysis, sends the reviewed active/editing identity, and follows the generation receipt instead of reusing the earlier version.
 
@@ -48,13 +48,41 @@ Each run retains:
 - `trace.json`: model-produced assistant text, session identity, completion state and calls for each turn.
 - `report.json`: automatic failures and the manual checks still required.
 
-`automated_pass: true` means only the machine-checkable gates passed. A reviewer must inspect the actual assistant text and raw tools using the scenario's `manual_review_required` list. Record the review separately with scenario, host, observed model (when emitted), skill hashes, verdict and concrete observations. Check settings are grouped, known choices are not re-asked, outline/style summaries are useful, preview artifacts are shown, and ordinary export proceeds without a mode/page-range questionnaire. Explicit editable requests must pause without conversion or an unapproved native substitute. Do not replace actual model traces with hand-authored ideal transcripts.
+`automated_pass: true` means only the machine-checkable gates passed. A reviewer must inspect the actual assistant text and raw tools using the scenario's `manual_review_required` list. Record the review separately with scenario, host, observed model (when emitted), skill hashes, verdict and concrete observations. Check settings are grouped, known choices are not re-asked, per-page cards expose actual content and the intended visual effect, style matching is attributed to the service, explicit batch scope is respected, preview artifacts are shown, and ordinary export proceeds without a mode/page-range questionnaire. Explicit editable requests must pause without conversion or an unapproved native substitute. Do not replace actual model traces with hand-authored ideal transcripts.
 
 For an immutable historical run, use its own `evaluator.py check --output RUN_DIRECTORY`; newer evaluators may have a newer manifest schema. Additional assertions can be audited against the existing raw calls and recorded separately without rewriting the original trace or claiming another model run.
 
 The print/exec harness exercises the text-question fallback. Native interactive question widgets need a separate manual host session using the same skill and fixtures. A missing second authenticated host, unsupported tool permission, timeout, or unavailable native question widget must remain an explicit evidence gap.
 
 Unit tests in `tests/test_conversation_traces.py` deliberately feed invalid call traces into the validator (early analysis/export, unapproved writes, missing required calls, retries after conflict, and wrong export arguments). Those synthetic traces prove the validator detects errors; they are **not** evidence that an agent follows the skill.
+
+## Per-page goals and failure state: 2026-11-02
+
+CLI/skill version 0.4.0 changes the default review from grouped style names to one page at a time: actual content, suggested takeaway, combinable visual goal and the service recommendation explained through its public description. A confirmed goal is saved with `pages edit --visual-goal` and read back; the host does not implement the service's matching rules. Goals preserve independent explicit style overrides. An empty string clears a goal; omission preserves it. The `visual_presentation_goals` capability distinguishes compatible services.
+
+The fixture now returns `generation_state` separately from the version lifecycle, exact-version `latest_run`, page counts and public `error_detail`. A terminal all-page failure must not be described as still running merely because `status=building_candidate`. Available recovery is not authorization for another paid request.
+
+| New scenario | Machine checks | Manual review still needed |
+|---|---|---|
+| `per_page_visual_goals` | Only the confirmed page is edited; user wording and guards retained; service layout read after goal save; generation only after the last explicit approval. | Useful page content/takeaway/effect explanation, meaningful next-page progression, no host-owned core style mapping or false visual-preview claim. |
+| `old_server_visual_goals` | Zero writes when the required capability is absent. | Clear compatibility limit and supported continuation, without claiming a saved/applied goal. |
+| `failed_preview_actionable` | Exact-version read, no generation/reanalysis/export. | Three failed pages and zero published; lifecycle versus run distinction; real support IDs; public recovery instructions without raw diagnostics. |
+
+The fixture's goal recommendation is a predeclared result for that test turn. It is not a copy of the product's selector and does not prove that real backend matching or generation honors goals. Validator unit tests reject another-page writes and saving a goal without a later layout read for the same project. Additional fixture checks preserve explicit user styles and distinguish failed generation from candidate lifecycle.
+
+Local full CLI checks: 136 passed, 1 skipped. The two new CLI tests failed first because argparse rejected `--visual-goal`, then passed after parser/body support. Three evaluator tests failed first for missing goal readback or unenforced scope/read ordering, then passed after the fixture/validator update.
+
+Three accepted Codex CLI 0.163.0 conversations, six user turns, passed automated gates and manual review of assistant text and CLI calls:
+
+| Scenario | Evidence | Manual result |
+|---|---|---|
+| `per_page_visual_goals` | `/tmp/sulaide-eval-20261102-per-page-prepared`, four turns | Actual returned page content and missing-evidence limits explained; only the confirmed page's goal saved, service recommendation read back; next page separately reviewed; one generation after the final approval. |
+| `failed_preview_actionable` | `/tmp/sulaide-eval-20261102-failed-preview`, one turn | Three failed, zero published, run terminated; lifecycle distinguished from generation state; genuine fixture run/operation IDs and public recovery guidance; zero writes. |
+| `old_server_visual_goals` | `/tmp/sulaide-eval-20261102-old-visual-goals-final`, one turn | Missing capability explained; zero writes; website handoff limited to existing content/style controls, without claiming a new goal field exists there. |
+
+The first old-server attempt passed machine checks but failed manual wording review: it suggested trying the new goal on the website without verifying that capability. Its trace remains at `/tmp/sulaide-eval-20261102-old-visual-goals`. The compatibility paragraph was clarified and the targeted scenario rerun successfully. This was four total host attempts/seven turns, including the superseded attempt, not four accepted passes.
+
+The accepted per-page and failure conversations used skill map `29d05ea630f0f134545fd726a0b9c6a7cb7918d7bd3977eb9076b799698c3d8c`; the final compatibility-only wording and its accepted rerun use `61358ca0b5ef80fbbe29b22b491973bfdda8f94bf79ad67e48c62e341f6da7b2`. The other two scenarios were not rerun after that bounded wording change. No model override was selected and the host did not report a model name. Native question widgets, real media rendering, actual Sulaide matching/image generation and PPTX validity remain outside these offline-product fixtures; these are not real PPT-generation results. Any later skill edit needs a new fingerprint and evidence.
 
 ## Server-owned generation boundary: 2026-10-29
 

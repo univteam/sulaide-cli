@@ -90,7 +90,7 @@ uv tool install git+https://github.com/univteam/sulaide-cli.git
 sulaide --version
 ```
 
-应输出类似 `sulaide 0.3.0@<提交>`。如果提示找不到命令，先看第 7 步。
+应输出类似 `sulaide 0.4.0@<提交>`。如果提示找不到命令，先看第 7 步。
 
 **4. 把 skill 装到你自己（当前 Agent）**
 
@@ -207,6 +207,8 @@ sulaide pages merge PROJECT_ID 4                    # 第 4 页合并到第 3 �
 sulaide pages reanalyze PROJECT_ID 2 --instruction "突出数据" \
   --expected-version VERSION_ID --expected-revision REV
 sulaide visual-styles list                          # 视觉风格 ID
+sulaide pages edit PROJECT_ID 2 --visual-goal "极简、少字，用模块和连接线表达关系" \
+  --expected-version VERSION_ID --expected-revision REV
 sulaide pages regenerate PROJECT_ID 2 --prompt "更简洁"     # 重新生成本页图片（消耗积分）
 sulaide pages edit-image PROJECT_ID 2 --prompt "主色改成蓝色"  # 按指令改图（消耗积分）
 sulaide pages images PROJECT_ID SLIDE_ID            # 图片历史；restore-image 恢复
@@ -260,7 +262,9 @@ sulaide resources download RESOURCE_VERSION_ID --output FILE   # 下载资源库
 
 只有一个 skill：`skills/sulaide/`。用户只需启用 `sulaide`，它会按需读取 `references/` 下的分步指南：
 
-默认在当前会话分阶段确认：集中选择母版、叙事风格、页数和语言 → 审阅大纲与各页视觉风格 → 查看生成预览并调整 → 导出普通 PPT。已明确的选择会沿用；只有用户明确要求全自动才跳过普通阶段确认。预览确认与导出合并，不再询问导出模式或转换页码。本期暂不实现可编辑导出交互；用户明确提出时先说明范围，不能未经同意替换为普通 PPT。
+默认在当前会话分阶段确认：集中选择母版、叙事风格、页数和语言 → 先看结构，再逐页审阅实际内容、结论和视觉呈现目标，由服务端推荐风格 → 查看生成预览并调整 → 导出普通 PPT。已明确的选择会沿用；只有用户明确要求全自动才跳过普通阶段确认。预览确认与导出合并，不再询问导出模式或转换页码。本期暂不实现可编辑导出交互；用户明确提出时先说明范围，不能未经同意替换为普通 PPT。
+
+默认每页给出实际内容、想传达的结论、画面建议和推荐风格的效果说明。用户可以组合“极简、少字、多图、强调连接”等目标；只有明确要求“后面沿用”才批量处理，并保留单页选择。所有页审阅完成后再生成预览。目标保存到每页并进入服务端推荐和生成，宿主不自行复制核心选型规则。
 
 母版和二进制底稿仍需到网站上传，上传完成后回到同一项目继续。选项来自网站现有能力与实时目录，不会把 CLI 参数逐项变成问卷。
 
@@ -282,9 +286,13 @@ sulaide resources download RESOURCE_VERSION_ID --output FILE   # 下载资源库
 
 `SKILL.md` 还包含前置条件、路由规则和常见错误（401、503 `AGENT_API_DISABLED`、限流、冲突、积分不足等）。`references/*.md` 没有 frontmatter，Agent 不会把它们列为独立 skill。
 
-`sulaide auth status` 中的 `source_settings_patch` 和 `review_identity_guards` 表明服务端支持省略设置保留、审阅版本保护。新 skill 遇到旧服务会说明升级或网站继续路径，不会静默去掉保护。普通旧 CLI 调用仍可使用。生成时可传 `--expected-source-revision`、`--expected-editing-version`、`--expected-manifest-revision`（原 `--expected-version` 仍表示 active 版本）；改图命令可传 `--expected-version`、`--expected-revision`、`--expected-slide-id`。过期前提会返回冲突，应回读并重新审阅。
+`sulaide auth status` 中的 `source_settings_patch`、`review_identity_guards` 和 `visual_presentation_goals` 分别表明服务端支持省略设置保留、审阅版本保护、保存页面视觉目标并参与推荐和生成。新 skill 遇到旧服务会说明升级或网站继续路径，不会静默去掉保护。普通旧 CLI 调用仍可使用。生成时可传 `--expected-source-revision`、`--expected-editing-version`、`--expected-manifest-revision`（原 `--expected-version` 仍表示 active 版本）；改图命令可传 `--expected-version`、`--expected-revision`、`--expected-slide-id`。过期前提会返回冲突，应回读并重新审阅。
 
 真实宿主对话测试与人工检查方法见 [conversation-evaluation.md](docs/conversation-evaluation.md)。
+
+页面视觉目标最多 2000 字符。`pages edit --visual-goal ""` 清除目标，省略该参数保留已有值；目标与正文、讲稿、显式风格分开保存。修改目标后需回读 `layout show` 的 `visual_goal` 与 `visual_style_recommendation`，不要把自由文本目标当作风格 ID。旧服务缺少目标能力时，不应宣称目标已生效。
+
+`preview show` 的 `status` 是版本生命周期，`generation_state` 才描述本次生成结果；`building_candidate` 可以同时对应已失败的任务。新响应另有失败/进行中/缺失/过期页数、`can_continue`、`provider_outcome_unknown` 和精确版本的 `latest_run`。失败页的 `error_detail` 提供安全原因、下一步动作及实际关联 ID。可继续不代表自动重试；结果未确认时先查询原操作，不能因未见图片就重复付费生成。
 
 ### 一步安装到编码 Agent
 

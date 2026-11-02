@@ -37,6 +37,26 @@ class ConversationTraceTests(unittest.TestCase):
             self.call("preview", "generate", "42"),
             self.call("export", "start", "42", "--mode", "native")])))
 
+    def test_page_goal_reply_does_not_authorize_editing_other_pages(self):
+        turn = self.turn(["pages edit"], ["pages edit"])
+        turn["allowed_page_numbers"] = {"pages edit": ["1"]}
+        valid = self.call("pages", "edit", "42", "1", "--visual-goal", "少字、多图")
+        self.assertEqual(evaluator.validate_turn(turn, self.trace([valid])), [])
+        reordered = self.call("pages", "edit", "--visual-goal", "少字、多图", "42", "1")
+        self.assertEqual(evaluator.validate_turn(turn, self.trace([reordered])), [])
+        wrong_page = self.call("pages", "edit", "42", "2", "--visual-goal", "少字、多图")
+        self.assertTrue(evaluator.validate_turn(turn, self.trace([wrong_page])))
+
+    def test_goal_reply_reads_the_service_recommendation_after_saving(self):
+        turn = self.turn(["pages edit"])
+        turn["require_goal_readback"] = True
+        save = self.call("pages", "edit", "42", "1", "--visual-goal", "少字、多图")
+        read = self.call("layout", "show", "42")
+        self.assertTrue(evaluator.validate_turn(turn, self.trace([read, save])))
+        self.assertTrue(evaluator.validate_turn(turn, self.trace([
+            save, self.call("layout", "show", "99")])))
+        self.assertEqual(evaluator.validate_turn(turn, self.trace([save, read])), [])
+
     def test_success_text_without_required_tool_call_fails(self):
         self.assertTrue(evaluator.validate_turn(self.turn(required=["export start"]),
                                               self.trace([], text="已经导出成功")))
@@ -154,6 +174,49 @@ class ConversationTraceTests(unittest.TestCase):
             self.assertEqual(project["active_presentation_version_id"], 102)
             generated, _ = evaluator.fake_call(output, ["preview", "generate", "42"])
             self.assertEqual(generated["presentation_version_id"], 103)
+
+    def test_goal_fixture_reads_back_saved_goal_without_overwriting_user_style(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "run"
+            evaluator.prepare(ROOT, output, "outline_style_edit", "codex")
+            evaluator.fake_call(output, ["pages", "edit", "42", "2", "--visual-style", "blueprint"])
+            evaluator.fake_call(output, ["pages", "edit", "42", "2", "--visual-goal", "少字、多图形"])
+            layout, code = evaluator.fake_call(output, ["layout", "show", "42"])
+            self.assertEqual(code, 0)
+            page = layout["pages"][1]
+            self.assertEqual(page["visual_goal"], "少字、多图形")
+            self.assertEqual(page["visual_style_id"], "blueprint")
+            self.assertEqual(page["visual_style_source"], "user")
+            self.assertEqual(page["visual_style_recommendation"], {"style_id": "consulting"})
+            evaluator.fake_call(output, ["pages", "edit", "42", "2", "--visual-goal", ""])
+            layout, _ = evaluator.fake_call(output, ["layout", "show", "42"])
+            self.assertIsNone(layout["pages"][1]["visual_goal"])
+
+    def test_failure_fixture_exposes_terminal_generation_and_actionable_public_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "run"
+            evaluator.prepare(ROOT, output, "failed_preview_actionable", "codex")
+            preview, code = evaluator.fake_call(output, ["preview", "show", "42", "--version-id", "101"])
+            self.assertEqual(code, 0)
+            self.assertEqual(preview["status"], "building_candidate")
+            self.assertEqual(preview["generation_state"], "failed")
+            self.assertEqual((preview["published_page_count"], preview["failed_page_count"],
+                              preview["generating_page_count"]), (0, 3, 0))
+            self.assertIsNone(preview["manifest_hash"])
+            self.assertEqual(preview["latest_run"]["status"], "failed")
+            for page in preview["pages"]:
+                self.assertIsNone(page["preview_url"])
+                self.assertEqual(page["error_detail"]["reason"], "IMAGE_SERVICE_UNREACHABLE")
+                self.assertEqual(page["error_detail"]["run_id"], preview["latest_run"]["run_id"])
+
+    def test_goal_capability_is_absent_in_old_service_fixture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "run"
+            evaluator.prepare(ROOT, output, "old_server_visual_goals", "codex")
+            capabilities, code = evaluator.fake_call(output, ["auth", "status"])
+            self.assertEqual(code, 0)
+            self.assertTrue(capabilities["review_identity_guards"])
+            self.assertNotIn("visual_presentation_goals", capabilities)
 
     def test_conflict_fixture_exposes_the_external_revision_on_reread(self):
         with tempfile.TemporaryDirectory() as directory:
