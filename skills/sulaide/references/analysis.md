@@ -25,19 +25,21 @@ Show four things together:
 
 For example, a page about three systems might aim for “极简、少量文字，用三个模块和连接线突出数据流向”. Present that as a proposal, not a rendered preview or a hard-coded mapping to a particular style. The service chooses the matching style.
 
-Offer “确认本页并继续／修改内容／调整呈现目标”, with free-text replies accepted. Retain prior explicit choices. A one-page reply does not approve remaining pages, generation or export.
+At every page, offer “确认本页并继续／修改内容或呈现目标／交给 Agent 完成所有未确认页”, with free-text replies accepted. The last option includes the current page and delegates the remaining content/goal/style review. Retain prior explicit choices. A one-page reply does not approve remaining pages, generation or export.
 
 ## Save the goal and read the service's choice
 
 `visual_presentation_goals: true` in capabilities is required before sending a goal. If absent, explain that this server cannot save and apply page goals; offer updating the service. A website handoff may use its existing content/style controls only: do not claim it can save or apply this new goal field unless that website capability has been verified. Do not submit an unknown field, pretend that conversation text was saved, or replace server matching with host matching.
 
-When the user confirms or supplies a goal:
+When the user confirms or supplies a goal, or has delegated this page's review:
 
 1. Read the current layout and match the page's stable `slide_id` to the content they reviewed. A changed identity or content needs affected-page review; do not silently renew an old approval.
 2. Save only the requested fields with `sulaide pages edit P N --visual-goal "USER_GOAL" --expected-version V --expected-revision R`. Goals allow up to 2000 characters; preserve their meaning. An empty string clears a goal; omitting the flag preserves it. Do not put the goal into `--narrative`, `--content` or a private prompt field.
 3. Read the project/layout again. Show the saved `visual_goal`, current style and `visual_style_recommendation.style_id` using public catalog descriptions. The service owns matching. Goal changes can invalidate old images/preparation, even when the style ID stays the same.
-4. Preserve an explicit user style. If the returned recommendation differs from that override, show both and ask whether to keep the override or apply the returned recommendation through the existing guarded `--visual-style` edit. Do not silently replace the user's style.
-5. If the saved outcome matches what the user accepted, acknowledge it and proceed to the next page. If it changes the reviewed effect materially, keep this page pending for confirmation. Once every applicable page is reviewed, show a compact final content/goal/style summary and ask to generate. An explicit last-page-and-generate reply may authorize both.
+4. Preserve an explicit user style. If the returned recommendation differs from that override, show both and ask whether to keep the override or apply the returned recommendation through the existing guarded `--visual-style` edit. Under delegated review, keep the override and explain the difference in the summary without another routine question. Do not silently replace the user's style.
+5. If the saved outcome matches what the user accepted, acknowledge it and proceed to the next page. If it changes the reviewed effect materially, keep this page pending for confirmation unless its review was delegated. Once every applicable page is reviewed, show a compact final content/goal/style summary and ask to generate. An explicit last-page-and-generate reply may authorize both.
+
+When the user selects agent review, cover every unconfirmed page, including the current one, without repeating page checkpoints. Check the returned content against the available source, choose a suitable goal for each applicable AI page, save it with the current guards and read back the service's style. Preserve explicit goals, styles and confirmed pages; do not rewrite factual content merely to fill the page or manufacture evidence. If no content change is needed, retain it. Report what the agent reviewed and the resulting content/goal/style for each covered page, then wait at generation unless it was already explicitly requested. This delegates review decisions, not the service's private style selector or analysis stage.
 
 Batch only when the user expressly asks, such as “后面沿用这个方向”. State the covered pages, preserve earlier page-specific choices and record each write/new identity. On a partial batch failure, report completed and remaining pages; recover an uncertain operation before continuing. Do not broaden one-page changes into whole-deck edits.
 
