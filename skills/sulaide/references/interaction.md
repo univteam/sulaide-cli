@@ -48,7 +48,7 @@ Bind confirmation to what was shown. Before writing, check for intervening chang
 
 Accepted background work may continue while the conversation waits. After interruption, query the original operation and show its current result. A wait timeout is not a failed run and never authorizes a new paid request. In a new conversation, read current state and re-establish the relevant checkpoint if prior confirmation cannot be established; do not rerun completed operations to reconstruct the conversation.
 
-Use page images or exact-version preview links, not a success count as the preview. Refresh expired links for that same version. If the host cannot display them, offer usable exact-version links and state the limitation; do not ask for visual approval of unseen images or claim that generation status proves visual quality. Missing images and quality warnings do not create a new absolute export ban: explain the effects and honor the website's available continue actions.
+Use page images delivered in the user-facing message through the host's supported attachment/preview mechanism, not a success count or tool-only image as the preview. Follow `preview.md` for browser screenshot artifacts, content-region versus complete-page labels and version binding. Refresh expired links for that same version. If the host cannot display the images, provide a usable browser entry with its version limitations stated; do not ask for visual approval of unseen images or claim that generation status proves visual quality. Missing images and quality warnings do not create a new absolute export ban: explain the effects and honor the website's available continue actions.
 
 ## Full automatic mode
 
