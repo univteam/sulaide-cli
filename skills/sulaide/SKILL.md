@@ -11,9 +11,9 @@ Sulaide turns source material into a presentation through choices in the current
 
 Before making, continuing, changing or exporting a presentation, read `references/interaction.md`. Read `references/web-options.md` when presenting choices; it maps the website's labels and defaults to this workflow.
 
-The default is **settings → outline and slide-style review → preview and adjustments → export**. Show the relevant result and wait at each checkpoint. A request such as “帮我做个 PPT” does not authorize running every stage without interaction. Only an explicit full-auto request skips routine checkpoints for that task.
+The default is **settings → outline and slide-style review → preview and adjustments → export**. Show the relevant result and wait at each checkpoint. A request such as “帮我做个 PPT” does not authorize running every stage without interaction. Delegating page review skips only the remaining page questions; an explicit full-auto request skips routine checkpoints for that task.
 
-Collect the main settings together and carry forward explicit choices. Then review each page’s actual content, takeaway and visual goal, with the service’s style explained through its public description. Use a batch only when the user explicitly requests it. A single-stage request enters that stage and stops when its requested result is delivered.
+Collect the main settings together and carry forward explicit choices. Then review each page’s actual content, takeaway and visual goal, with the service’s style explained through its public description. At every page, offer to let the agent finish all unconfirmed pages, including the current one. Selecting that option delegates content review, goal selection and use of service recommendations; it preserves prior choices and ends with a summary before the generation choice. A single-stage request enters that stage and stops when its requested result is delivered.
 
 This release exports **ordinary PPT only (`native`)**. Editable export is deferred: do not offer or start text/full editable conversion, even if the server advertises it. If explicitly requested, explain the current limit and wait for the user to choose ordinary PPT; never silently substitute it. Existing exported files may still be downloaded as resources.
 

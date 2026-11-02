@@ -624,6 +624,72 @@
         "使用公开IMAGE_SERVICE_UNREACHABLE原因及真实run/operation标识说明恢复动作，不编造trace ID或展示内部诊断。",
         "can_continue和retryable不是重试授权；遵从用户先检查的范围，不再次生成、重分析或重建项目。"
       ]
+    },
+    {
+      "id": "delegated_page_review",
+      "covers": [
+        "AE3",
+        "AE9"
+      ],
+      "initial_stage": "analysis",
+      "turns": [
+        {
+          "user": "请读取项目42的大纲，逐页让我确认每页内容和呈现目标。",
+          "allow_writes": [],
+          "require_calls": [
+            "layout show",
+            "visual-styles list"
+          ]
+        },
+        {
+          "user": "第1页内容确认，呈现目标是“极简、少字，用图形突出增长与留存的关系”，视觉风格使用技术架构。确认后继续第2页。",
+          "allow_writes": [
+            "pages edit"
+          ],
+          "require_calls": [
+            "pages edit",
+            "layout show"
+          ],
+          "max_calls": {
+            "pages edit": 2
+          },
+          "allowed_page_numbers": {
+            "pages edit": [
+              "1"
+            ]
+          },
+          "require_goal_readback": true
+        },
+        {
+          "user": "交给 Agent 完成所有未确认页。保持少字、以图形说明关系的方向。",
+          "allow_writes": [
+            "pages edit"
+          ],
+          "require_calls": [
+            "pages edit",
+            "layout show"
+          ],
+          "max_calls": {
+            "pages edit": 2
+          },
+          "allowed_page_numbers": {
+            "pages edit": [
+              "2",
+              "3"
+            ]
+          },
+          "require_goal_readback": true,
+          "goal_recommendation_style": "consulting"
+        }
+      ],
+      "review": [
+        "第一轮和第二轮展示当前页实际内容、目标、风格效果，均明确提供交给Agent完成所有未确认页的可选项，说明包含当前页及生成前汇总。",
+        "第二轮只保存第1页目标与用户明确指定的技术架构风格；随后审阅第2页，而非把确认扩展到其他页。",
+        "第三轮连续完成第2、3页：逐页检查现有内容与证据限制、保存各自目标并回读服务端推荐，不再逐页要求确认；不得跳过当前第2页。",
+        "第三轮不得再改已确认第1页；最终第1页保留原目标和blueprint用户风格，第2、3页均有保存的目标与服务端返回风格。",
+        "最终按页汇总实际内容、目标与风格，说明属于用户委托Agent审阅，不虚称用户逐页看过；停在是否生成预览的选择，无生成、分析或导出写入。",
+        "不虚构源材料缺少的数据、证据或阶段措施；不把代理审阅当作本地替代服务端匹配。"
+      ]
     }
   ]
 }
