@@ -24,7 +24,13 @@ If `provider_outcome_unknown` is true or state is `result_unconfirmed`, query th
 
 ## Show real pages, then wait
 
-Display the selected version's actual `preview_url` images in the conversation, with page labels. Use exact-version page links if the host cannot display the images; say what could not be shown. Refresh expired URLs by rereading **that version**. A generic project link that opens a newer candidate is not equivalent.
+Deliver the selected version's images in the **user-facing message**, with page labels, through a media format the host actually supports. A tool returning an image or a browser displaying it does not establish that it appeared in the conversation. If the user reports a placeholder or link, do not keep repeating the same remote-image embed or claim successful display.
+
+When the host's browser/preview tool can render the page, use its native screenshot artifact and embed the returned local file in the message. For local hosts such as Codex, use an absolute path, for example `![第 1 页预览](</absolute/path/page-1.jpg>)`; a bare path, file link or image only in tool output is insufficient. Use the tool-produced artifact; do not download remote media to bypass host presentation restrictions. If no supported attachment/preview mechanism exists, explain the limitation and provide a usable browser entry instead of asking for visual approval of unseen images.
+
+Check what is shown: `preview_url` may be the **content-region image**, without the title, branding and footer. Label it as such; a complete slide preview requires the rendered page with its fixed layers. Before attributing a browser capture to the selected version, verify the page shown corresponds to that version. The website's current-project route may ignore version/hash query parameters: do not invent a fixed-version link or silently capture a newer candidate. If it cannot show that version, disclose the mismatch and retain the exact-version result.
+
+Refresh expired image URLs by rereading **that version**. If only links can be delivered, distinguish an exact-version image link from a current-project website entry, and explain when the former downloads instead of opening inline. A generic project link that opens a newer candidate is not equivalent to the reviewed version.
 
 Separate published, missing, failed, stale and unpaid pages. A completed run or a success count is not proof that every page was delivered or visually reviewed. If the images cannot be inspected, explain the limitation rather than asking the user to approve unseen visuals.
 
