@@ -21,6 +21,8 @@ This release exports **ordinary PPT only (`native`)**. Editable export is deferr
 
 ## Execution boundary
 
+When the user requests material-based visual guidelines, the host may use `sulaide-design-brief` to extract a compatible text specification and pass it explicitly at generation. This does not create or modify a master template, and does not replace the service's analysis or style recommendation.
+
 The host assistant handles the conversation: understand the user's material and choices, explain public options, present returned results and carry out requested edits. Sulaide's service performs the product's analysis, style recommendation and image generation through the commands in these guides. Do not replace those stages with host-generated output to use the host's model allowance. A local suggestion is a suggestion, not a completed Sulaide analysis, recommendation or preview.
 
 This skill and everything delivered to a user's CLI are public client material. Do not request, download, reconstruct or include Sulaide's private generation prompts, internal recipes, scoring rules, raw model traces or debug dumps in the host context, local files or handoffs. Do not seek an administrator endpoint or an alternate API to obtain them. The service owns those internals; the CLI receives product results and public status only. This instruction is not a substitute for server-side response filtering.
@@ -37,7 +39,7 @@ The host's ordinary conversation uses its own account's allowance. Sulaide model
 
 ## Routing
 
-This is the only Sulaide skill. After the interaction protocol, read the matching step guide when entering that step. Read-only account, project-list and resource queries do not start a presentation workflow.
+This skill owns the product workflow. The separate `sulaide-design-brief` skill handles material-based visual specification extraction only when requested. After the interaction protocol, read the matching step guide when entering that step. Read-only account, project-list and resource queries do not start a presentation workflow.
 
 | User intent | Read and follow | Key output to hand off |
 | --- | --- | --- |
@@ -46,6 +48,7 @@ This is the only Sulaide skill. After the interaction protocol, read the matchin
 | View or download files in the resource library (source drafts, analysis drafts, generated images, exported PPTX/PDF) | `references/resources.md` | resource list, or local file path of a downloaded resource |
 | Start a deck / add or update material; project settings (title, language, page count, master template 母版, narrative preference 叙事偏好) | `references/source.md` | `project_id`, `source_revision` |
 | Build or recover the outline; re-analyse; edit, add, delete, move, split, merge or re-analyse single pages; per-page visual goal and style; title width | `references/analysis.md` | `operation_id`, outline, page count |
+| Extract or apply visual guidelines from customer materials | `sulaide-design-brief` skill and its `references/output-contract.md` | local specification file; accepted operation/version when submitted |
 | Generate pages, inspect page status; regenerate / edit one page image; restore an old image; theme colours | `references/preview.md` | `presentation_version_id`, `manifest_hash` |
 | Pre-export quality check, download a PPTX | `references/export.md` | file path, version, manifest hash |
 

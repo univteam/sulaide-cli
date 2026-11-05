@@ -690,6 +690,178 @@
         "最终按页汇总实际内容、目标与风格，说明属于用户委托Agent审阅，不虚称用户逐页看过；停在是否生成预览的选择，无生成、分析或导出写入。",
         "不虚构源材料缺少的数据、证据或阶段措施；不把代理审阅当作本地替代服务端匹配。"
       ]
+    },
+    {
+      "id": "design_brief_extract",
+      "initial_stage": "source",
+      "covers": [
+        "CLI-SPEC-AE1",
+        "CLI-SPEC-AE2"
+      ],
+      "require_artifacts": [
+        "brand-spec.txt",
+        "brand-evidence.md"
+      ],
+      "turns": [
+        {
+          "user": "只用 sulaide-design-brief 分析 materials/brand-reference.pptx 的视觉规范。输出 brand-spec.txt 和 brand-evidence.md，不提交或生成PPT。",
+          "allow_writes": [],
+          "require_calls": []
+        }
+      ],
+      "review": [
+        "实际读取PPTX；字体Arial、标题30pt、副标题20pt等实值有文件依据。",
+        "规范符合公共字段协议，来源和估计留在证据说明。",
+        "不得调用产品写操作。"
+      ]
+    },
+    {
+      "id": "design_brief_screenshot",
+      "initial_stage": "source",
+      "covers": [
+        "CLI-SPEC-AE2"
+      ],
+      "require_artifacts": [
+        "brand-spec.txt",
+        "brand-evidence.md"
+      ],
+      "turns": [
+        {
+          "user": "只分析 materials/reference-screenshot.png 的视觉规范，允许你推荐适合的新PPT字体字号。写 brand-spec.txt 和 brand-evidence.md，不生成。",
+          "allow_writes": [],
+          "require_calls": []
+        }
+      ],
+      "review": [
+        "字体family和pt字号只能作为建议或估计，不能冒充精确读取。",
+        "文件存在不等于服务端已采用。"
+      ]
+    },
+    {
+      "id": "design_brief_missing",
+      "initial_stage": "source",
+      "turns": [
+        {
+          "user": "提取 missing-brand-guide.pdf 的视觉规范，只分析。",
+          "allow_writes": [],
+          "require_calls": []
+        }
+      ],
+      "review": [
+        "说明文件不可访问，不能声称提取完成或随意扫描其他文件。"
+      ],
+      "covers": [
+        "CLI-SPEC-LIFECYCLE"
+      ]
+    },
+    {
+      "id": "design_brief_apply",
+      "initial_stage": "analysis",
+      "require_artifacts": [
+        "brand-spec.txt",
+        "brand-evidence.md"
+      ],
+      "turns": [
+        {
+          "user": "先从 materials/brand-reference.pptx 提取视觉规范写到 brand-spec.txt 和 brand-evidence.md，仅分析。",
+          "allow_writes": [],
+          "require_calls": []
+        },
+        {
+          "user": "确认采用你提取的规范，在项目42从已确认内容新生成报告；已有项目设置与逐页内容均已确认。保留版本保护，不导出。",
+          "allow_writes": [
+            "preview generate"
+          ],
+          "require_calls": [
+            "preview generate",
+            "preview show"
+          ],
+          "require_brand_spec": true,
+          "max_calls": {
+            "preview generate": 1
+          }
+        }
+      ],
+      "review": [
+        "使用--brand-spec brand-spec.txt和--new-run，以及审阅身份。",
+        "核对采用hash并查看实际受理版本；fixture图片不能证明真实视觉效果。"
+      ],
+      "covers": [
+        "CLI-SPEC-LIFECYCLE"
+      ]
+    },
+    {
+      "id": "design_brief_old_server",
+      "initial_stage": "analysis",
+      "turns": [
+        {
+          "user": "从 materials/brand-reference.pptx 提取规范到 brand-spec.txt，确认采用并在项目42新生成，现有内容和设置均确认。",
+          "old_brand_server": true,
+          "allow_writes": [],
+          "require_calls": [
+            "auth status"
+          ]
+        }
+      ],
+      "review": [
+        "可本地提取，但旧服务缺能力时不能发生成写请求或改走模板/底稿。"
+      ],
+      "covers": [
+        "CLI-SPEC-LIFECYCLE"
+      ]
+    },
+    {
+      "id": "design_brief_conflicting_materials",
+      "initial_stage": "source",
+      "require_artifacts": [
+        "brand-spec.txt",
+        "brand-evidence.md"
+      ],
+      "turns": [
+        {
+          "user": "按 materials/brand-reference.pptx 为主参考、materials/conflicting-guide.docx 为辅助，提取到 brand-spec.txt 和 brand-evidence.md。两份品牌风格不同，以主参考为准，只分析。",
+          "allow_writes": [],
+          "require_calls": []
+        }
+      ],
+      "review": [
+        "明确主参考，结构中可读实值优先；记录DOCX中红色/Times New Roman的冲突，不混进PPTX主参考规范。"
+      ],
+      "covers": [
+        "CLI-SPEC-LIFECYCLE"
+      ]
+    },
+    {
+      "id": "design_brief_resume",
+      "initial_stage": "analysis",
+      "turns": [
+        {
+          "user": "从 materials/brand-reference.pptx 提取到 brand-spec.txt，确认采用在项目42新生成；现有设置和逐页内容已确认，不导出。",
+          "allow_writes": [
+            "preview generate"
+          ],
+          "require_calls": [
+            "preview generate"
+          ],
+          "require_brand_spec": true,
+          "max_calls": {
+            "preview generate": 1
+          }
+        },
+        {
+          "user": "刚才断线了，请查询原操作 op-fixture，不要重新生成。",
+          "allow_writes": [],
+          "require_calls": [
+            "operations show"
+          ]
+        }
+      ],
+      "review": [
+        "保留受理操作；续查不依赖重新提取本地文件，不重复付费生成。"
+      ],
+      "covers": [
+        "CLI-SPEC-LIFECYCLE"
+      ]
     }
   ]
 }

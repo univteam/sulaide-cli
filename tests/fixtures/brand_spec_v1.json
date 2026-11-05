@@ -1,0 +1,37 @@
+{
+  "schema_version": "brand-spec.v1",
+  "valid": [
+    {
+      "name": "basic",
+      "input": "[Color Palette]\nColor scheme: Evidence\nPrimary color: #123456\nSecondary color: #336699\nAccent color: #E08020\nText color: #111111\n\n[Typography]\nTitle font: Arial, size: 32pt, weight: bold\nSubtitle font: Microsoft YaHei, size: 20pt, weight: semibold\nCompany/Brand: Example\nTemplate theme: Clear evidence and restrained visual hierarchy.",
+      "canonical_text": "[Color Palette]\nColor scheme: Evidence\nPrimary color: #123456\nSecondary color: #336699\nAccent color: #E08020\nText color: #111111\nBackground color: #FFFFFF\nCard color: #EEF1F3\nStroke color: #CBD2DA\nChart data series colors: #123456, #336699, #E08020, #546D85, #6C91B6, #E9A45E\n[Typography]\nTitle font: Arial, size: 32pt, weight: bold\nSubtitle font: Microsoft YaHei, size: 20pt, weight: semibold\nCompany/Brand: Example\nTemplate theme: Clear evidence and restrained visual hierarchy.",
+      "spec_hash": "6af8274277ed71b507374b9c22ed94dfa142ee35e36498a74befb5f94c89671b"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "low_contrast",
+      "input": "[Color Palette]\nColor scheme: Evidence\nPrimary color: #123456\nSecondary color: #336699\nAccent color: #E08020\nText color: #EEEEEE\n\n[Typography]\nTitle font: Arial, size: 32pt, weight: bold\nSubtitle font: Microsoft YaHei, size: 20pt, weight: semibold\nCompany/Brand: Example\nTemplate theme: Clear evidence and restrained visual hierarchy."
+    },
+    {
+      "name": "missing_theme",
+      "input": "[Color Palette]\nColor scheme: Evidence\nPrimary color: #123456\nSecondary color: #336699\nAccent color: #E08020\nText color: #111111\n\n[Typography]\nTitle font: Arial, size: 32pt, weight: bold\nSubtitle font: Microsoft YaHei, size: 20pt, weight: semibold\nCompany/Brand: Example\n"
+    },
+    {
+      "name": "duplicate_field",
+      "input": "[Color Palette]\nColor scheme: Evidence\nPrimary color: #123456\nPrimary color: #123456\nSecondary color: #336699\nAccent color: #E08020\nText color: #111111\n\n[Typography]\nTitle font: Arial, size: 32pt, weight: bold\nSubtitle font: Microsoft YaHei, size: 20pt, weight: semibold\nCompany/Brand: Example\nTemplate theme: Clear evidence and restrained visual hierarchy."
+    },
+    {
+      "name": "invalid_size",
+      "input": "[Color Palette]\nColor scheme: Evidence\nPrimary color: #123456\nSecondary color: #336699\nAccent color: #E08020\nText color: #111111\n\n[Typography]\nTitle font: Arial, size: 0pt, weight: bold\nSubtitle font: Microsoft YaHei, size: 20pt, weight: semibold\nCompany/Brand: Example\nTemplate theme: Clear evidence and restrained visual hierarchy."
+    },
+    {
+      "name": "unknown_field",
+      "input": "[Color Palette]\nColor scheme: Evidence\nPrimary color: #123456\nSecondary color: #336699\nAccent color: #E08020\nText color: #111111\n\n[Typography]\nTitle font: Arial, size: 32pt, weight: bold\nSubtitle font: Microsoft YaHei, size: 20pt, weight: semibold\nCompany/Brand: Example\nTemplate theme: Clear evidence and restrained visual hierarchy.\nBody font: Arial"
+    },
+    {
+      "name": "bad_derived",
+      "input": "[Color Palette]\nColor scheme: Evidence\nPrimary color: #123456\nSecondary color: #336699\nAccent color: #E08020\nText color: #111111\nCard color: #000000\n\n[Typography]\nTitle font: Arial, size: 32pt, weight: bold\nSubtitle font: Microsoft YaHei, size: 20pt, weight: semibold\nCompany/Brand: Example\nTemplate theme: Clear evidence and restrained visual hierarchy."
+    }
+  ]
+}

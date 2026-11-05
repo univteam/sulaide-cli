@@ -442,6 +442,8 @@ def build_parser() -> argparse.ArgumentParser:
     preview = sub.add_parser("preview").add_subparsers(dest="action", required=True)
     pshow = preview.add_parser("show"); pshow.add_argument("project_id", type=int); pshow.add_argument("--version-id", type=int)
     generate = preview.add_parser("generate"); generate.add_argument("project_id", type=int); generate.add_argument("--request-id"); generate.add_argument("--expected-version", type=int)
+    generate.add_argument("--brand-spec", type=Path, help="本次生成采用的 UTF-8 视觉规范文件")
+    generate.add_argument("--new-run", action="store_true", help="携带 --brand-spec 明确开始新报告，而非继续现有候选")
     generate.add_argument("--expected-source-revision", type=int, help="审阅时的 source_revision")
     generate.add_argument("--expected-editing-version", type=int, help="审阅时的 editing_version_id")
     generate.add_argument("--expected-manifest-revision", type=int, help="审阅时的 manifest_revision")
@@ -484,6 +486,7 @@ def build_parser() -> argparse.ArgumentParser:
     pregen = pages.add_parser("regenerate", help="重新生成本页图片（消耗积分）")
     pregen.add_argument("project_id", type=int); pregen.add_argument("page_number", type=int)
     pregen.add_argument("--prompt"); pregen.add_argument("--visual-style"); _image_versioned(pregen)
+    pregen.add_argument("--brand-spec", type=Path, help="仅本次单页重新生成采用的视觉规范文件")
     pimg = pages.add_parser("edit-image", help="按指令修改本页图片（消耗积分）")
     pimg.add_argument("project_id", type=int); pimg.add_argument("page_number", type=int)
     pimg.add_argument("--prompt", required=True); pimg.add_argument("--reference-image", type=Path); _image_versioned(pimg)
@@ -690,6 +693,33 @@ def _write(client, key: str, method: str, path: str, body: dict, explicit_rid=No
     return result
 
 
+def _brand_spec_payload(client, file: Path, operation: str) -> dict:
+    from .brand_spec import read_brand_spec
+    # Read once, before any network call; later retries use the accepted snapshot.
+    spec = read_brand_spec(file)
+    capability = client.request("GET", "/capabilities").get("brand_spec_override")
+    if (not isinstance(capability, dict)
+            or spec["schema_version"] not in capability.get("schema_versions", [])
+            or operation not in capability.get("operations", [])
+            or len(spec["text"]) > capability.get("max_characters", 0)):
+        raise ValueError("此服务尚不支持本次 CLI 视觉规范覆盖；规范已保留，请更新服务后重试")
+    return spec
+
+
+def _brand_spec_write(client, method: str, path: str, body: dict, spec: dict, explicit_rid=None) -> dict:
+    payload = {**body, "brand_spec_override": {key: spec[key] for key in ("schema_version", "text")}}
+    # The endpoint is part of intent, even for requests without review fields.
+    service = getattr(client, "base", _base_url() + "/api/agent/v1")
+    result = _write(client, f"brand_spec:{service}:{method}:{path}", method, path, payload, explicit_rid)
+    adopted = result.get("brand_spec") or {}
+    if (adopted.get("source") != "cli_override"
+            or adopted.get("schema_version") != spec["schema_version"]
+            or adopted.get("spec_hash") != spec["spec_hash"]):
+        operation_id = (result.get("operation") or {}).get("operation_id")
+        raise ValueError(f"服务端未确认采用相同规范 hash；请查询原操作 {operation_id or '（未返回编号）'}，不要重复生成")
+    return result
+
+
 def _version_body(args) -> dict:
     return {k: v for k, v in (("expected_presentation_version_id", getattr(args, "expected_version", None)),
                               ("expected_manifest_revision", getattr(args, "expected_revision", None))) if v is not None}
@@ -762,6 +792,9 @@ def _pages(client, args) -> dict:
         body = {**_version_body(args), **{k: v for k, v in (
             ("prompt", args.prompt), ("visual_style_id", args.visual_style),
             ("expected_slide_id", args.expected_slide_id)) if v is not None}}
+        if args.brand_spec:
+            spec = _brand_spec_payload(client, args.brand_spec, "page_regenerate")
+            return _brand_spec_write(client, "POST", f"{page}/regenerate", body, spec, args.request_id)
         return _write(client, key, "POST", f"{page}/regenerate", body, args.request_id)
     if a == "edit-image":
         body = {**_version_body(args), "prompt": args.prompt}
@@ -854,12 +887,20 @@ def run(args) -> dict:
         return result
     if args.area == "preview":
         if args.action == "show": return client.request("GET", f"/projects/{args.project_id}/presentation", params={"version_id": args.version_id})
+        if args.new_run and not args.brand_spec:
+            raise ValueError("--new-run 必须与 --brand-spec 一起使用")
+        body = {"expected_presentation_version_id": args.expected_version,
+                **{k: v for k, v in (("expected_source_revision", args.expected_source_revision),
+                                     ("expected_editing_version_id", args.expected_editing_version),
+                                     ("expected_manifest_revision", args.expected_manifest_revision)) if v is not None}}
+        if args.brand_spec:
+            intent = "start" if args.new_run else "continue"
+            spec = _brand_spec_payload(client, args.brand_spec, f"preview_{intent}")
+            return _brand_spec_write(client, "POST", f"/projects/{args.project_id}/preview/{intent}",
+                                     body, spec, args.request_id)
         rid = _request_id(f"preview:{args.project_id}", args.request_id)
         result = client.request("POST", f"/projects/{args.project_id}/preview/continue", json_body={
-            "request_id": rid, "expected_presentation_version_id": args.expected_version,
-            **{k: v for k, v in (("expected_source_revision", args.expected_source_revision),
-                                 ("expected_editing_version_id", args.expected_editing_version),
-                                 ("expected_manifest_revision", args.expected_manifest_revision)) if v is not None},
+            "request_id": rid, **body,
         })
         _remember_operation(f"preview:{args.project_id}", rid, (result.get("operation") or {}).get("operation_id"))
         return result

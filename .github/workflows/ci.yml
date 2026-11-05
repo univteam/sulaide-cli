@@ -36,6 +36,7 @@ jobs:
           sulaide skills install --all
           test -f "$SULAIDE_SKILLS_HOME/.config/opencode/skills/sulaide/SKILL.md"
           test -f "$SULAIDE_SKILLS_HOME/.config/opencode/skills/sulaide/references/login.md"
+          test -f "$SULAIDE_SKILLS_HOME/.config/opencode/skills/sulaide-design-brief/references/output-contract.md"
           test ! -e "$SULAIDE_SKILLS_HOME/.config/opencode/skills/sulaide-source"
   validate-claude-plugin:
     runs-on: ubuntu-latest

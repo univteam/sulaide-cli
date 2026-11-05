@@ -74,7 +74,7 @@ def positionals(argv):
             result.extend(iterator)
             break
         if arg.startswith("--"):
-            if arg not in {"--pretty", "--human", "--no-wait", "--apply-section-template", "--clear-style"} and "=" not in arg:
+            if arg not in {"--pretty", "--human", "--no-wait", "--apply-section-template", "--clear-style", "--new-run"} and "=" not in arg:
                 next(iterator, None)
         else:
             result.append(arg)
@@ -131,6 +131,12 @@ def validate_turn(expected, trace):
                        and positionals(later["argv"])[2:3] == [project_id]
                        for later in calls[index + 1:]):
                 errors.append("page goal saved without reading the service recommendation afterward")
+        if name in ("preview generate", "pages regenerate") and expected.get("require_brand_spec"):
+            if option(call["argv"], "--brand-spec") is None:
+                errors.append(f"{name}: required visual specification was not submitted")
+        for flag in expected.get("forbidden_flags", []):
+            if flag in call["argv"]:
+                errors.append(f"unexpected opt-in flag: {flag}")
     for name in expected.get("require_calls", []):
         if name not in names:
             errors.append(f"required call missing: {name}")
@@ -191,6 +197,9 @@ def prepare(root, output, scenario_id, host):
     (workspace / "bin").mkdir(parents=True)
     (workspace / "state").mkdir(mode=0o700)
     shutil.copytree(root / "skills/sulaide", workspace / "skill")
+    shutil.copytree(root / "skills/sulaide-design-brief", workspace / "skills/sulaide-design-brief")
+    shutil.copytree(root / "tests/fixtures/design_brief", workspace / "materials")
+    shutil.copy2(root / "src/sulaide_cli/brand_spec.py", output / "brand_spec.py")
     shutil.copy2(root / "scripts/evaluate-conversation.py", output / "evaluator.py")
     cli_source = (root / "src/sulaide_cli/cli.py").read_text(encoding="utf-8")
     parser_functions = {"build_parser", "_versioned", "_structure_wait", "_image_versioned"}
@@ -210,11 +219,12 @@ def prepare(root, output, scenario_id, host):
             '<rect width="960" height="540" fill="white"/>'
             f'<text x="70" y="100" font-size="32">Fixture slide {page}</text></svg>', encoding="utf-8")
     instructions = ("This workspace is an offline Sulaide conversation evaluation. "
-        "Use only the supplied skill/SKILL.md and its references. "
+        "Use the supplied skill/SKILL.md and its references. When material visual guidelines are requested, "
+        "also read skills/sulaide-design-brief/SKILL.md and its output contract. "
         f"Every sulaide command MUST use the absolute executable {wrapper}. "
         "It is a fixture, not the installed CLI. Never read credentials, run login/install/update, "
         "call network services, or change the fixture or evaluation files. "
-        "Use source.txt when the user refers to supplied material. "
+        "Use source.txt for business source; material visual references are in materials/. "
         "Do not invent user messages. Report tool limitations honestly.\n")
     (workspace / "AGENTS.md").write_text(instructions, encoding="utf-8")
     (workspace / "CLAUDE.md").write_text(instructions, encoding="utf-8")
@@ -227,6 +237,11 @@ def prepare(root, output, scenario_id, host):
     manifest = {"schema_version": 1, "scenario_id": scenario_id, "host": host,
         "skill_sha256": {str(path.relative_to(workspace / "skill")): digest(path)
                           for path in sorted((workspace / "skill").rglob("*.md"))},
+        "additional_skill_sha256": {str(path.relative_to(workspace / "skills")): digest(path)
+            for path in sorted((workspace / "skills").rglob("*")) if path.is_file()},
+        "material_sha256": {str(path.relative_to(workspace / "materials")): digest(path)
+            for path in sorted((workspace / "materials").rglob("*")) if path.is_file()},
+        "brand_spec_sha256": digest(output / "brand_spec.py"),
         "fixture_sha256": digest(output / "evaluator.py"), "wrapper_sha256": digest(wrapper),
         "parser_sha256": digest(output / "parser.py"),
         "scenario_sha256": digest(output / "scenario.json"),
@@ -274,15 +289,32 @@ def fake_call(output, argv):
     error = None
     parser_output = io.StringIO()
     parser_exit = None
+    brand_spec = None
+    brand_error = None
     if argv != ["--version"]:
         with contextlib.redirect_stdout(parser_output), contextlib.redirect_stderr(parser_output):
             try:
                 runpy.run_path(str(output / "parser.py"))["build_parser"]().parse_args(argv)
             except SystemExit as exc:
                 parser_exit = exc.code
+    if parser_exit is None and option(argv, "--brand-spec"):
+        try:
+            source = Path(option(argv, "--brand-spec"))
+            source = source if source.is_absolute() else output / "workspace" / source
+            if (output / "workspace").resolve() not in source.resolve().parents:
+                raise ValueError("Fixture specification must stay inside workspace")
+            brand_spec = runpy.run_path(str(output / "brand_spec.py"))["read_brand_spec"](source)
+            if config.get("old_brand_server"):
+                brand_error = "BRAND_SPEC_UNSUPPORTED"
+        except (OSError, ValueError):
+            brand_error = "BRAND_SPEC_INPUT_ERROR"
+    if "--new-run" in argv and not option(argv, "--brand-spec"):
+        brand_error = "BRAND_SPEC_INPUT_ERROR"
     if parser_exit is not None:
         response, code = {"message": parser_output.getvalue()}, parser_exit
         error = "CLI_USAGE_ERROR" if code else None
+    elif brand_error:
+        response, code, error = {"reason": brand_error, "message": "视觉规范未被受理；不自动降级或重复生成"}, 2, brand_error
     elif name in config.get("fail_calls", {}):
         error = config["fail_calls"][name]
         if error == "PRESENTATION_VERSION_CONFLICT" and not state.get("external_change_injected"):
@@ -297,6 +329,10 @@ def fake_call(output, argv):
             "supported_exports": ["native", "text_editable", "full_editable"],
             "source_options": ["language", "target_page_count", "narrative_preference", "project_title", "style_id"],
             "styles": True, "visual_styles": True, "operations_resume": True}
+        response["brand_spec_override"] = {"schema_versions": ["brand-spec.v1"], "max_characters": 3000,
+            "operations": ["preview_start", "preview_continue", "page_regenerate"]}
+        if config.get("old_brand_server"):
+            response.pop("brand_spec_override")
         if config.get("old_server"):
             response.pop("review_identity_guards")
         if config.get("old_goal_server"):
@@ -432,6 +468,15 @@ def fake_call(output, argv):
     else:
         error, code = "UNSUPPORTED_FIXTURE_COMMAND", 2
         response = {"reason": error, "message": f"Fixture does not implement {name}"}
+    if brand_spec and not error:
+        state["brand_spec"] = {**brand_spec, "source": "cli_override"}
+        response["brand_spec"] = state["brand_spec"]
+    elif name in ("wait", "operations show") and state.get("brand_spec"):
+        response["brand_spec"] = state["brand_spec"]
+    if name == "preview show" and state.get("brand_spec"):
+        for page in response.get("pages", []):
+            page["requested_brand_spec"] = state["brand_spec"]
+            page["image_brand_spec"] = state["brand_spec"]
     write_json(output / "workspace/state/world.json", state)
     with (output / "workspace/state/calls.jsonl").open("a", encoding="utf-8") as log:
         log.write(json.dumps({"turn": turn, "argv": argv, "error": error, "response": response}, ensure_ascii=False) + "\n")
@@ -456,8 +501,9 @@ def host_command(host, output, session_id=None):
     wrapper = str(output / "workspace/bin/sulaide")
     cmd = [executable, "--safe-mode", "--print", "--verbose", "--output-format", "stream-json",
            "--permission-mode", "dontAsk", "--permission-prompts", "none",
-           "--tools", "Read,Bash", "--allowedTools", f"Read({output / 'workspace'}/**)",
-           f"Bash({wrapper} *)", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
+           "--tools", "Read,Bash,Write", "--allowedTools", f"Read({output / 'workspace'}/**)",
+           f"Write({output / 'workspace/brand-spec.txt'})", f"Write({output / 'workspace/brand-evidence.md'})",
+           "Bash(unzip -p materials/*)", f"Bash({wrapper} *)", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
            "--no-chrome"]
     if session_id:
         cmd += ["--resume", session_id]
@@ -532,6 +578,17 @@ def check_run(output):
     for name, expected_hash in manifest["skill_sha256"].items():
         if digest(output / "workspace/skill" / name) != expected_hash:
             errors.append(f"evaluated skill changed: {name}")
+    for key, folder in (("additional_skill_sha256", output / "workspace/skills"),
+                        ("material_sha256", output / "workspace/materials")):
+        for name, expected_hash in manifest.get(key, {}).items():
+            if not (folder / name).is_file() or digest(folder / name) != expected_hash:
+                errors.append(f"evaluation input changed: {name}")
+    if manifest.get("brand_spec_sha256") != digest(output / "brand_spec.py"):
+        errors.append("brand specification validator snapshot changed")
+    for name in scenario.get("require_artifacts", []):
+        artifact = output / "workspace" / name
+        if not artifact.is_file() or not artifact.read_bytes():
+            errors.append(f"required local artifact missing: {name}")
     report = {"scenario_id": scenario["id"], "host": manifest["host"], "automated_pass": not errors,
               "errors": errors, "manual_review_required": scenario["review"]}
     write_json(output / "report.json", report)

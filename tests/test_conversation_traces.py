@@ -133,6 +133,20 @@ class ConversationTraceTests(unittest.TestCase):
             self.assertNotIn("SULAIDE_API_KEY", env)
             self.assertEqual(Path(env["SULAIDE_STATE_DIR"]), output / "workspace/state")
 
+    def test_design_brief_evaluation_freezes_both_skills_and_reference_material(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "run"
+            manifest = evaluator.prepare(ROOT, output, "design_brief_extract", "codex")
+            self.assertTrue((output / "workspace/skills/sulaide-design-brief/SKILL.md").is_file())
+            self.assertTrue((output / "workspace/materials/brand-reference.pptx").is_file())
+            self.assertIn("sulaide-design-brief/SKILL.md", manifest["additional_skill_sha256"])
+            self.assertIn("brand-reference.pptx", manifest["material_sha256"])
+            self.assertIn("brand_spec_sha256", manifest)
+
+    def test_new_run_is_a_boolean_for_positional_page_checks(self):
+        self.assertEqual(evaluator.positionals(["preview", "generate", "--new-run", "42",
+                                               "--brand-spec", "brand.txt"]), ["preview", "generate", "42"])
+
     def test_fake_backend_records_disallowed_command_instead_of_hiding_it(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "run"
