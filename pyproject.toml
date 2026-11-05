@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sulaide-cli"
-version = "0.4.3"
+version = "0.5.0"
 description = "CLI for Sulaide Agent workflow API"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
@@ -30,4 +30,10 @@ packages = ["sulaide_cli", "sulaide_cli._skills"]
 "sulaide_cli._skills" = "skills"
 
 [tool.setuptools.package-data]
-"sulaide_cli._skills" = ["*/SKILL.md", "*/**/*"]
+"sulaide_cli._skills" = [
+    "sulaide/SKILL.md", "sulaide/references/interaction.md", "sulaide/references/web-options.md",
+    "sulaide/references/login.md", "sulaide/references/projects.md", "sulaide/references/resources.md",
+    "sulaide/references/source.md", "sulaide/references/analysis.md", "sulaide/references/preview.md",
+    "sulaide/references/export.md", "sulaide/references/billing.md", "sulaide/references/feedback.md",
+    "sulaide-design-brief/SKILL.md", "sulaide-design-brief/references/output-contract.md",
+]

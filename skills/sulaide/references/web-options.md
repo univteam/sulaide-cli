@@ -30,3 +30,7 @@ The website's reanalysis “结构要求” field allows 2000 characters. Presen
 ## Maintainer parity anchors
 
 Website source components: `frontend/src/features/project-workflow/ui/ProjectUploadFlow.tsx`, `ProjectAnalysisWorkbench.tsx`, `VisualStyleOptions.tsx`, `ProjectPreviewWorkspace.tsx`, `ProjectExportGate.tsx`; template upload: `frontend/src/features/template-management/ui/TemplateLibrary.tsx` in the website repository. These are release-check references, not instructions to inspect source code during a user's PPT task. Recheck the fixed mapping when website choices change; never copy private service addresses or internal prompts into this public skill.
+
+## CLI-only material visual specification
+
+Users may explicitly request the independent `sulaide-design-brief` skill to extract visual guidelines from accessible materials. This produces a text file for `preview generate --brand-spec FILE` or a single AI-page regeneration. It is not another website option or master-library upload. Preserve the normal project settings and use the existing service workflow for analysis, recommendation and generation. Fixed template-rendered pages and overlays retain their existing behaviour.

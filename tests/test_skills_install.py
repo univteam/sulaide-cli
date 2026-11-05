@@ -28,7 +28,7 @@ class SkillsInstallTests(unittest.TestCase):
 
     def test_bundled_skill_has_references(self):
         root = skills.bundled_skills_root()
-        self.assertEqual(skills.SKILL_NAMES, ("sulaide",))
+        self.assertEqual(skills.SKILL_NAMES, ("sulaide", "sulaide-design-brief"))
         self.assertTrue((root / "sulaide/SKILL.md").is_file())
         self.assertTrue((root / "sulaide/references/login.md").is_file())
 
@@ -42,7 +42,8 @@ class SkillsInstallTests(unittest.TestCase):
             self.assertTrue((base / "sulaide/SKILL.md").is_file())
             self.assertTrue((base / "sulaide/references/export.md").is_file())
             self.assertEqual((base / "sulaide" / skills.MARKER).read_text().strip(), __version__)
-            self.assertEqual(sorted(p.name for p in base.iterdir()), ["sulaide"])
+            self.assertEqual(sorted(p.name for p in base.iterdir()), ["sulaide", "sulaide-design-brief"])
+            self.assertTrue((base / "sulaide-design-brief/references/output-contract.md").is_file())
 
     def test_install_removes_only_our_legacy_skill_dirs(self):
         ours = self._legacy(".claude/skills", "sulaide-source")
@@ -102,7 +103,16 @@ class SkillsInstallTests(unittest.TestCase):
         self.assertEqual(row["skills"]["sulaide"], __version__)
         skills.uninstall(["gemini"])
         self.assertFalse((self.home / ".gemini/skills/sulaide").exists())
+        self.assertFalse((self.home / ".gemini/skills/sulaide-design-brief").exists())
         self.assertFalse(legacy.exists())
+
+    def test_new_skill_foreign_directory_is_preserved_on_install_update_and_uninstall(self):
+        foreign = self._legacy(".codex/skills", "sulaide-design-brief", marker=False)
+        before = (foreign / "SKILL.md").read_text()
+        skills.install(["codex"])
+        skills.update()
+        skills.uninstall(["codex"])
+        self.assertEqual((foreign / "SKILL.md").read_text(), before)
 
 
 if __name__ == "__main__":

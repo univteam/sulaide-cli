@@ -49,7 +49,7 @@
 
 ## sulaide-cli：让编码 Agent 使用速来得
 
-本仓库是速来得 Agent API 的命令行客户端 `sulaide`，以及配套的 `sulaide` skill。装好后，Claude Code、Codex、Cursor、Gemini CLI、GitHub Copilot 等编码 Agent 可以直接帮你把材料做成 PPT：登录 → 上传底稿 → 叙事分析 → 预览 → 导出 PPTX。
+本仓库是速来得 Agent API 的命令行客户端 `sulaide`，以及配套的 `sulaide` 工作流和独立的 `sulaide-design-brief` 材料视觉规范 skill。装好后，Claude Code、Codex、Cursor、Gemini CLI、GitHub Copilot 等编码 Agent 可以直接帮你把材料做成 PPT：登录 → 上传底稿 → 叙事分析 → 预览 → 导出 PPTX。
 
 ## 给 AI 助手的安装说明 / For AI agents
 
@@ -258,9 +258,24 @@ sulaide resources download RESOURCE_VERSION_ID --output FILE   # 下载资源库
 
 不要把 Key 写进 prompt、shell 历史、skill 文件或交接文档。
 
+## 从材料提取 CLI 视觉规范
+
+启用独立的 `sulaide-design-brief` skill，让当前 AI 助手读取可访问的 PPTX、文档、PDF 或图片，提取视觉主题、配色、标题和副标题字体字号。实际可读格式取决于宿主工具。文件结构中的实值与截图估计分开说明，产出 UTF-8 `brand-spec.txt` 和证据说明；只要求提取时不会发起产品写操作。
+
+用户选择采用后，在生成命令中显式传入文件：
+
+```bash
+sulaide preview generate PROJECT_ID --brand-spec brand-spec.txt --new-run --expected-version V --expected-source-revision S --expected-editing-version E --expected-manifest-revision R
+sulaide pages regenerate PROJECT_ID PAGE --brand-spec brand-spec.txt --expected-version V --expected-revision R --expected-slide-id SLIDE_ID
+```
+
+`--new-run` 必须与 `--brand-spec` 合用，调用新报告入口；省略它会开始首次生成或继续同规范候选。与现有候选的规范冲突时返回错误，不自动取消或重做。每次新生成需显式带文件；已受理任务的等待和恢复沿用服务端冻结值，本地文件后续变化不影响它。
+
+该能力需 `auth status` 公布 `brand_spec_override` 支持；旧服务会在付费写入前停止。CLI 只提交规范文字并核对采用 hash，不上传原参考材料，不创建模板库记录，也不把规范设为项目默认。它替换 AI 调用的品牌规范段，固定标题/页脚、Logo、模板章节/结束页和导出固定层仍沿用现有渲染行为。公共文本格式见 [输出协议](skills/sulaide-design-brief/references/output-contract.md)。
+
 ## `sulaide` skill
 
-只有一个 skill：`skills/sulaide/`。用户只需启用 `sulaide`，它会按需读取 `references/` 下的分步指南：
+随 CLI 分发两个 skill：`skills/sulaide/` 负责做 PPT 的产品流程，`skills/sulaide-design-brief/` 仅在用户要求提取或使用材料视觉规范时介入。主流程按需读取 `references/` 下的分步指南：
 
 默认在当前会话分阶段确认：集中选择母版、叙事风格、页数和语言 → 先看结构，再逐页审阅实际内容、结论和视觉呈现目标，由服务端推荐风格 → 查看生成预览并调整 → 导出普通 PPT。每页均提供“确认本页并继续／修改内容或呈现目标／交给 Agent 完成所有未确认页”。选择交给 Agent 后，它会处理当前页及其余未确认页的内容、呈现目标和服务端风格推荐，保留已有单页选择，汇总后等待用户选择是否生成。明确要求全自动可跳过普通阶段确认。预览确认与导出合并，不再询问导出模式或转换页码。本期暂不实现可编辑导出交互；用户明确提出时先说明范围，不能未经同意替换为普通 PPT。
 
@@ -325,7 +340,7 @@ sulaide skills uninstall --agent opencode
 ### 单独打包
 
 ```bash
-uv run scripts/package-workflow-skills.py   # 输出 dist/workflow-skills/sulaide-<版本>.zip
+uv run scripts/package-workflow-skills.py   # 输出含两个 skill 的 dist/workflow-skills/sulaide-<版本>.zip
 ```
 
 ### 维护说明
@@ -374,7 +389,7 @@ uv run pytest
 
 **Sulaide (速来得) is an AI PPT assistant that turns your existing material into a professional, editable presentation.** Upload a draft (Word, PDF, PPTX, spreadsheets, or pasted text), confirm the narrative and page roles, review and regenerate pages, then export an editable PPTX with your master slides, logo, footer, and editable text — not a one-off image.
 
-This repository provides the `sulaide` CLI for the Sulaide Agent API and a `sulaide` agent skill, so coding agents such as Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot can run the workflow for you. Install with `uv tool install git+https://github.com/univteam/sulaide-cli.git`; see the install table above for one-step plugin setup. **AI agents:** follow the numbered steps in [给 AI 助手的安装说明 / For AI agents](#给-ai-助手的安装说明--for-ai-agents).
+This repository provides the `sulaide` CLI for the Sulaide Agent API and the `sulaide` workflow plus an independent `sulaide-design-brief` material-visual-specification skill, so coding agents such as Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot can run the workflow for you. Install with `uv tool install git+https://github.com/univteam/sulaide-cli.git`; see the install table above for one-step plugin setup. **AI agents:** follow the numbered steps in [给 AI 助手的安装说明 / For AI agents](#给-ai-助手的安装说明--for-ai-agents).
 
 Website: [www.sulide.com.cn](https://www.sulide.com.cn) · [Sign up](https://www.sulide.com.cn/register) · [Log in](https://www.sulide.com.cn/login) · License: [Apache-2.0](LICENSE)
 

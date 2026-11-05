@@ -13,11 +13,11 @@ REFERENCES = ("interaction", "web-options", "login", "projects", "resources", "s
 # absorb internal prompt recipes, debug dumps or evaluation artifacts.
 PUBLIC_SKILL_FILES = {"sulaide/SKILL.md"} | {
     f"sulaide/references/{ref}.md" for ref in (*REFERENCES, "billing", "feedback")
-}
+} | {"sulaide-design-brief/SKILL.md", "sulaide-design-brief/references/output-contract.md"}
 
 
 class SkillDistributionTests(unittest.TestCase):
-    def test_single_skill_is_packaged_with_references(self):
+    def test_both_skills_are_packaged_with_reviewed_files(self):
         with tempfile.TemporaryDirectory() as directory:
             subprocess.run([sys.executable, str(ROOT / "scripts/package-workflow-skills.py"),
                             "--output", directory], check=True, capture_output=True, text=True)
@@ -32,9 +32,9 @@ class SkillDistributionTests(unittest.TestCase):
                     self.assertEqual(bundle.read(f"sulaide/references/{ref}.md"),
                                      (ROOT / f"skills/sulaide/references/{ref}.md").read_bytes())
 
-    def test_sulaide_is_the_only_frontmatter_skill(self):
+    def test_only_the_two_supported_skills_have_frontmatter(self):
         skill_files = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "skills").rglob("SKILL.md"))
-        self.assertEqual(skill_files, ["skills/sulaide/SKILL.md"])
+        self.assertEqual(skill_files, ["skills/sulaide-design-brief/SKILL.md", "skills/sulaide/SKILL.md"])
         self.assertTrue((ROOT / "skills/sulaide/SKILL.md").read_text().startswith("---\nname: sulaide\n"))
         for ref in (ROOT / "skills/sulaide/references").glob("*.md"):
             self.assertFalse(ref.read_text().startswith("---"), f"{ref} must not have frontmatter")

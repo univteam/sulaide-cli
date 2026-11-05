@@ -54,3 +54,9 @@ Before a page-image write, read `sulaide layout show PROJECT_ID` to obtain the e
 Regenerate/edit-image require a started preview (`PREVIEW_NOT_STARTED` otherwise). Preserve their accepted operation/target references and inspect the resulting page until terminal status; do not poll an unrelated latest version. Show the actual changed page afterward and return to the preview checkpoint. HTTP 409 requires rereading and renewed review, not automatic guard replacement.
 
 Report public error messages/codes and trace IDs without copying raw model responses, debug dumps, credentials or sensitive input. Generation and requested image edits run on Sulaide; do not fetch its private prompts or substitute a host-generated image for a returned Sulaide page. Keep project/version/hash and operation references internally for export and recovery. Do not claim visual approval from generation status alone.
+
+## Explicit CLI visual specification
+
+If the user selected a material-based specification using `sulaide-design-brief`, append `--brand-spec FILE` to `preview generate` or `pages regenerate`. New report generation with a changed specification uses `preview generate --new-run --brand-spec FILE`; the flag does not cancel existing work. Keep all reviewed identity arguments. This is an optional CLI input and must not become a project default or be added when the user did not choose it.
+
+The CLI requires `brand_spec_override` capability and validates adoption against the returned `brand_spec.spec_hash`. Keep the accepted operation/version and inspect that exact version. A missing or different hash must be resolved by querying the original operation rather than repeating paid generation. Continue/retry of accepted work uses its frozen specification. Editing or restoring an existing image retains its own provenance; use regenerate to request a new specification. Template-rendered pages and fixed overlays are outside this AI specification's scope.

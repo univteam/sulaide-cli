@@ -50,3 +50,7 @@ After upload, re-read the project's material, settings and source revision. Show
 Upload failure leaves the workflow at source preparation. Do not claim the CLI uploaded the binary file, pass the binary bytes as text, or start analysis against the old material.
 
 Return the project ID, saved revision, actual settings and material limitations. Keep request/operation IDs for recovery; a timeout is not permission to submit a new copy of the material.
+
+## Material-based CLI visual guidelines
+
+When explicitly requested, use the independent `sulaide-design-brief` skill to inspect accessible reference materials and produce a text specification. Keep it separate from source content and master selection; do not create a master, clear the chosen `style_id`, or call `theme set` for this purpose. Preserve the file for the later generation request described in `preview.md`. Ordinary material ingestion and the website master-upload route remain available for their original purposes.

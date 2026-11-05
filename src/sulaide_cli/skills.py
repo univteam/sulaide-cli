@@ -8,7 +8,13 @@ from pathlib import Path
 
 from . import __version__
 
-SKILL_NAMES = ("sulaide",)
+SKILL_NAMES = ("sulaide", "sulaide-design-brief")
+PUBLIC_SKILL_FILES = {
+    "sulaide": ("SKILL.md", *(f"references/{name}.md" for name in (
+        "interaction", "web-options", "login", "projects", "resources", "source",
+        "analysis", "preview", "export", "billing", "feedback"))),
+    "sulaide-design-brief": ("SKILL.md", "references/output-contract.md"),
+}
 # Separately installed skills from earlier versions; removed only if they carry our marker.
 LEGACY_SKILL_NAMES = ("sulaide-login", "sulaide-source", "sulaide-analysis", "sulaide-preview", "sulaide-export")
 MARKER = ".sulaide-skill"
@@ -91,7 +97,11 @@ def install(agents: list[str], *, force: bool = False) -> dict:
                 else:
                     shutil.rmtree(dest)
             dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(source / name, dest, ignore=shutil.ignore_patterns("__pycache__"))
+            dest.mkdir()
+            for relative in PUBLIC_SKILL_FILES[name]:
+                target = dest / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source / name / relative, target)
             (dest / MARKER).write_text(__version__ + "\n", encoding="utf-8")
             results.append({"agent": agent, "skill": name, "status": "installed", "version": __version__, "path": str(dest)})
     return {"version": __version__, "results": results}

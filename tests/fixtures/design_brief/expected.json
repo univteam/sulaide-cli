@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "pptx": {
+    "title_font": "Arial",
+    "title_size_pt": 30,
+    "subtitle_font": "Arial",
+    "subtitle_size_pt": 20,
+    "primary": "#153B5B",
+    "secondary": "#2251FF",
+    "accent": "#E69A32",
+    "text_color": "#111111"
+  },
+  "screenshot": {
+    "font_family": "unknown",
+    "font_size_pt": "unknown",
+    "expectation": "Must distinguish inferred appearance from measured document typography."
+  },
+  "conflicting_docx": {
+    "title_font": "Times New Roman",
+    "title_size_pt": 40,
+    "primary": "#B01038",
+    "secondary": "#6A2145"
+  }
+}
