@@ -325,6 +325,7 @@ def fake_call(output, argv):
             "retryable": False, "message": "目录暂不可用。" if error == "CATALOG_UNAVAILABLE" else "测试版本已变化，请读取当前内容。"}, 3
     elif name == "auth status":
         response = {"api_version": "v1", "authenticated_as": "fixture-account", "file_upload": False,
+            "analysis_page_count": {"available": not config.get("content_analysis_disabled", False), "count_basis": "content", "min": 1, "max": 50},
             "review_identity_guards": True, "source_settings_patch": True, "visual_presentation_goals": True,
             "supported_exports": ["native", "text_editable", "full_editable"],
             "source_options": ["language", "target_page_count", "narrative_preference", "project_title", "style_id"],
@@ -337,6 +338,8 @@ def fake_call(output, argv):
             response.pop("review_identity_guards")
         if config.get("old_goal_server"):
             response.pop("visual_presentation_goals")
+        if config.get("old_count_server"):
+            response.pop("analysis_page_count")
     elif name == "credits":
         response = {"available": 1000, "balance": 1000}
     elif name == "styles list":
@@ -413,6 +416,8 @@ def fake_call(output, argv):
             value = option(argv, flag)
             if value is not None:
                 state["settings"][key] = int(value) if key in ("target_page_count", "style_id") else value
+                if key == "target_page_count":
+                    state["settings"]["count_basis"] = "content"
                 if key == "style_id":
                     state["settings"]["style_name"] = "新上传母版" if value == "8" else "示例公司母版"
         if option(argv, "--narrative"):

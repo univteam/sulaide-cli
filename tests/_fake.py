@@ -24,7 +24,11 @@ class FakeClientCase(unittest.TestCase):
                 handler = test.responses.get((method, path))
                 if callable(handler):
                     return handler(kwargs)
-                return handler if handler is not None else {}
+                if handler is not None:
+                    return handler
+                if (method, path) == ("GET", "/capabilities"):
+                    return {"analysis_page_count": {"available": True, "count_basis": "content", "min": 1, "max": 50}}
+                return {}
         self.client = patch("sulaide_cli.cli.Client", return_value=FakeClient())
         self.client.start()
 

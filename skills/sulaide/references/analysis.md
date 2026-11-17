@@ -12,7 +12,9 @@ Sulaide performs analysis and style recommendation through the CLI. The host exp
 4. On completion, read the project, `sulaide layout show PROJECT_ID`, `sulaide visual-styles list` and capabilities from `sulaide auth status`. Analysis can promote a new active version: refresh source, active, editing version and manifest revision together.
 5. Give a short section/page overview, then start with the first unreviewed page. The overview is navigation, not approval of all page content.
 
-The website's reanalysis count is **1–50**, starting from current pages; changing it replaces the outline, so explain the impact first. Its “结构要求” input allows 2000 characters; the CLI/API's existing 4000-character compatibility limit is not an extra website option. Collect it only when the user needs structural guidance.
+The analysis target is **1–50 content pages**, excluding cover, chapter/transition and true closing pages. Check `analysis_page_count.available` and content basis in capabilities; the CLI also checks before submitting and explicitly confirms the basis. A saved content target takes priority over the typed content count; the actual total and unmarked historical settings cannot silently become a target. When no trusted target is available, ask the user to select it. Explain that reanalysis replaces the outline while retaining historical reports. Its “结构要求” input allows 2000 characters; the CLI/API's existing 4000-character compatibility limit is not an extra website option. Collect it only when the user needs structural guidance.
+
+A capacity failure with `analysis_failure.v1` and `next_action=review_source_settings` asks the user to review the source or explicitly adjust the content target. Keep the original target until they change it; repeated identical requests are not a remedy. Rendering more actual pages may increase model usage, time and credits under the existing metering rules. After analysis, navigation, generation completion and export cover every actual page; later user splits/merges need not preserve the original target.
 
 ## A page the user can understand
 

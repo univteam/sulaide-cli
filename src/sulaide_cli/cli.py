@@ -393,9 +393,20 @@ def _source_options(args) -> dict:
         "narrative_preference": narrative,
     }
     result = {key: value for key, value in options.items() if value is not None}
+    if args.target_pages is not None:
+        result["count_basis"] = "content"
     if args.clear_style:
         result["style_id"] = None
     return result
+
+
+def _require_content_page_count(client) -> None:
+    """Fail before writes when the server cannot honor the visible page contract."""
+    capability = client.request("GET", "/capabilities").get("analysis_page_count")
+    if (not isinstance(capability, dict) or capability.get("available") is not True
+            or capability.get("count_basis") != "content"
+            or capability.get("min") != 1 or capability.get("max") != 50):
+        raise ValueError("内容页分析暂不可用或服务版本过旧；请确认服务已启用内容页能力后重试。")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -426,7 +437,7 @@ def build_parser() -> argparse.ArgumentParser:
     for sp in (upload, set_source):
         sp.add_argument("--title", help="项目标题")
         sp.add_argument("--language", choices=("zh", "en"), help="输出语言（默认沿用项目语言，zh）")
-        sp.add_argument("--target-pages", type=int, help="页数设定：严格按此页数规划叙事结构（1–50）")
+        sp.add_argument("--target-pages", type=int, help="内容页数（1–50），不含封面、章节／过渡页和结束页")
         sp.add_argument("--narrative", choices=("rigorous", "fluent"), default=None,
                         help="叙事偏好：rigorous=严谨架构，fluent=流利表达；不传则不发送该字段")
         master = sp.add_mutually_exclusive_group()
@@ -435,7 +446,7 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--source-page-count", type=int, help="底稿本身的页数（仅记录，可省略）")
 
     analysis = sub.add_parser("analysis").add_subparsers(dest="action", required=True)
-    start = analysis.add_parser("start"); start.add_argument("project_id", type=int); start.add_argument("--request-id"); start.add_argument("--page-count", type=int, help="本次分析页数（1–50），覆盖已保存的页数设定；省略则用项目设定"); start.add_argument("--expected-revision", type=int)
+    start = analysis.add_parser("start"); start.add_argument("project_id", type=int); start.add_argument("--request-id"); start.add_argument("--page-count", type=int, help="本次内容页数（1–50），不含封面、章节／过渡页和结束页；覆盖已保存内容目标"); start.add_argument("--expected-revision", type=int)
     start.add_argument("--structure-requirements", help="结构要求（可选），例如：按问题、证据、建议组织")
     styles = sub.add_parser("styles", help="母版（PPT 模板）").add_subparsers(dest="action", required=True)
     styles.add_parser("list", help="列出可用母版及其 ID")
@@ -866,21 +877,25 @@ def run(args) -> dict:
         else:
             text = args.text if args.text is not None else args.file.read_text(encoding="utf-8") if args.file else None
         if text is None: raise ValueError("Provide --text or --file")
+        source_options = _source_options(args)
+        if args.target_pages is not None:
+            _require_content_page_count(client)
         rid = _request_id(f"source_save:{args.project_id}", args.request_id)
         result = client.request("PUT", f"/projects/{args.project_id}/source", json_body={
             "request_id": rid, "content": text,
             "filename": str(file_path.name) if file_path else None,
             "expected_source_revision": args.expected_revision,
-            **_source_options(args),
+            **source_options,
         })
         _remember_operation(f"source_save:{args.project_id}", rid, (result.get("operation") or {}).get("operation_id"))
         return result
     if args.area == "analysis":
         if args.page_count is not None and not 1 <= args.page_count <= 50:
             raise ValueError("--page-count 必须在 1–50 之间")
+        _require_content_page_count(client)
         rid = _request_id(f"analysis:{args.project_id}", args.request_id)
         result = client.request("POST", f"/projects/{args.project_id}/analysis", json_body={
-            "request_id": rid, "page_count": args.page_count, "expected_source_revision": args.expected_revision,
+            "request_id": rid, "page_count": args.page_count, "count_basis": "content", "expected_source_revision": args.expected_revision,
             **({"structure_requirements": args.structure_requirements} if args.structure_requirements else {}),
         })
         _remember_operation(f"analysis:{args.project_id}", rid, (result.get("operation") or {}).get("operation_id"))
