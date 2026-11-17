@@ -22,14 +22,14 @@ For text, use `sulaide source set PROJECT_ID --file PATH --expected-revision REV
 |---|---|---|
 | 项目标题 | `--title "..."` | Use the confirmed title; preserve an existing title unless changed. |
 | 输出语言 | `--language zh\|en` | 中文 or 英文; carry forward the user's choice. |
-| 页数设定 | `--target-pages N` | Submit the confirmed count explicitly on new work, including the 5-page suggestion once accepted. Initial website settings are 1–30; CLI compatibility accepts 1–50. |
+| 内容页数 | `--target-pages N` | Submit the confirmed 1–50 content-page count explicitly, including the 5-content-page suggestion once accepted. Cover, chapter/transition and closing pages are additional. |
 | 母版 | `--style-id ID` | ID must come from the account's current master list. |
 | 清除母版 | `--clear-style` | Only when the user chooses the default fixed layer/removes the master. Mutually exclusive with `--style-id`. |
 | 叙事偏好 | `--narrative rigorous\|fluent` | Maps to 严谨架构／流利表达. New work submits the confirmed preference. |
 
 Check `source_settings_patch: true` in `auth status` before relying on omitted settings being preserved or clearing a master. On a compatible server, omission means keep the existing setting; `--clear-style` explicitly clears the master. If unsupported, explain the compatibility limit and use the website settings path; do not omit fields on an old server and claim they will be preserved.
 
-`--source-page-count` records the original document's page count, not the target. Never substitute it for the confirmed target. If a requested count is outside the website stage's range, explain the range and available reanalysis path; do not silently clamp it or make a smaller deck first.
+`--source-page-count` records the original document's page count, not the target. Never substitute it or the current deck's total for the confirmed content target. Reject targets outside 1–50 rather than silently clamping or making a smaller deck. A saved target is reusable only when settings explicitly mark `count_basis=content`; historical unmarked values require user confirmation. The CLI checks `analysis_page_count` capability and sends the count and content basis together when setting a target; a content-only source patch preserves the saved pair.
 
 After saving, re-read `sulaide projects show PROJECT_ID`; compare saved settings with the confirmation. Keep the new `source_revision` for analysis. A mismatch or conflict must be resolved before starting analysis. On existing work, explain that replacing source content returns to the source stage and requires a new outline; preserve settings the user did not change.
 

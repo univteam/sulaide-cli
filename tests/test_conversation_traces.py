@@ -183,6 +183,13 @@ class ConversationTraceTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("改善续约体验", project["draft_content"])
             self.assertEqual(project["settings"]["style_id"], 7)
+            capabilities, _ = evaluator.fake_call(output, ["auth", "status"])
+            self.assertEqual(capabilities["analysis_page_count"],
+                             {"available": True, "count_basis": "content", "min": 1, "max": 50})
+            evaluator.fake_call(output, ["source", "set", "42", "--file", "source.txt", "--target-pages", "50"])
+            project, _ = evaluator.fake_call(output, ["projects", "show", "42"])
+            self.assertEqual(project["settings"]["target_page_count"], 50)
+            self.assertEqual(project["settings"]["count_basis"], "content")
             evaluator.fake_call(output, ["analysis", "start", "42"])
             project, _ = evaluator.fake_call(output, ["projects", "show", "42"])
             self.assertEqual(project["active_presentation_version_id"], 102)

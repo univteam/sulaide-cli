@@ -188,12 +188,14 @@ sulaide analysis start PROJECT_ID --expected-revision 1 --structure-requirements
 |---|---|---|
 | 项目标题 | `projects create --title` / `source set --title` | `新PPT` |
 | 输出语言 | `--language zh\|en` | 沿用项目语言；新项目 `zh` |
-| 页数设定（严格按页数，不自动增减） | `source set --target-pages N`（1–50），`analysis start --page-count N`（同样 1–50）可单次覆盖 | 沿用已保存值；skill 新建确认时默认 5 页、展示网站的 1–30 范围 |
+| 内容页数（不含封面、章节／过渡页和结束页） | `source set --target-pages N`（1–50），`analysis start --page-count N`（同样 1–50）可单次覆盖 | 沿用明确标为内容口径的已保存值；skill 新建确认时建议 5 个内容页 |
 | 母版 | `source set --style-id ID`；`--clear-style` 明确清除，两者互斥 | 沿用项目冻结母版；新项目默认固定层 |
 | 叙事偏好 | `--narrative rigorous`（严谨架构）\| `fluent`（流利表达） | 沿用已保存值；新项目严谨架构 |
 | 结构要求 | `analysis start --structure-requirements` | 无 |
 
 > 不兼容变更：Agent API 的 `PUT /projects/{id}/source` 不再接受 `page_count`（改名为 `source_page_count`，表示底稿本身页数；目标页数是 `target_page_count`），并拒绝未知字段。请用 `sulaide update` 升级 CLI。
+
+新分析需要服务公布可用的 `analysis_page_count` 内容页能力。CLI 在分析或设置目标前检查能力，并发送 `count_basis=content`；旧服务或尚未启用时在写入前停止。旧网页和旧 CLI 的新请求需要刷新／升级，已受理任务及原请求的幂等结果保持历史合同。原文件页数、内容页目标、报告实际总页数是三个不同数量；不得互相代用。
 
 ### 逐页编辑与预览调整
 
